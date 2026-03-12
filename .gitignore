@@ -73,6 +73,20 @@ app/*.tsbuildinfo
 app/vite.config.ts.timestamp-*
 
 # ==================================
+# Electron
+# ==================================
+
+# Electron build output
+app/release/
+
+# Compiled Electron files
+app/electron/*.js
+app/electron/*.js.map
+
+# API binary for Electron
+api/bin/
+
+# ==================================
 # General
 # ==================================
 

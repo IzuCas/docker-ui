@@ -1,0 +1,138 @@
+import { app, BrowserWindow, shell } from 'electron';
+import path from 'path';
+import { spawn, ChildProcess } from 'child_process';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let mainWindow: BrowserWindow | null = null;
+let apiProcess: ChildProcess | null = null;
+
+// Use app.isPackaged to detect production vs development
+const isDev = !app.isPackaged;
+const API_PORT = process.env.API_PORT || '8001';
+
+function startApiServer(): void {
+  if (process.env.SKIP_API === 'true') {
+    console.log('Skipping API server (SKIP_API=true)');
+    console.log('Make sure to run the API separately: cd api && go run ./cmd/api');
+    return;
+  }
+
+  // In development, try to find API binary in the api/bin folder
+  // In production, it's bundled in resources/api
+  let apiPath: string;
+  const apiExecutable = process.platform === 'win32' ? 'api.exe' : 'api';
+  
+  if (isDev) {
+    // Development: look for binary in api/bin (relative to app folder)
+    apiPath = path.join(__dirname, '..', '..', 'api', 'bin', apiExecutable);
+  } else {
+    // Production: bundled in resources
+    apiPath = path.join(process.resourcesPath, 'api', apiExecutable);
+  }
+
+  console.log(`Looking for API at: ${apiPath}`);
+
+  if (!existsSync(apiPath)) {
+    console.log('API binary not found. Running without embedded API.');
+    console.log('To build the API binary: cd api && go build -o bin/api ./cmd/api');
+    console.log('Or run the API separately: cd api && go run ./cmd/api');
+    return;
+  }
+
+  console.log(`Starting API server from: ${apiPath}`);
+
+  apiProcess = spawn(apiPath, [], {
+    env: {
+      ...process.env,
+      PORT: API_PORT,
+      DOCKER_HOST: process.env.DOCKER_HOST || 'unix:///var/run/docker.sock',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  apiProcess.stdout?.on('data', (data: Buffer) => {
+    console.log(`[API] ${data.toString().trim()}`);
+  });
+
+  apiProcess.stderr?.on('data', (data: Buffer) => {
+    console.error(`[API Error] ${data.toString().trim()}`);
+  });
+
+  apiProcess.on('error', (err: Error) => {
+    console.error('Failed to start API server:', err);
+  });
+
+  apiProcess.on('exit', (code: number | null) => {
+    console.log(`API server exited with code ${code}`);
+    apiProcess = null;
+  });
+}
+
+function stopApiServer(): void {
+  if (apiProcess) {
+    console.log('Stopping API server...');
+    apiProcess.kill('SIGTERM');
+    apiProcess = null;
+  }
+}
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 1024,
+    minHeight: 768,
+    title: 'Docker Manager',
+    icon: path.join(__dirname, '../public/icon.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  // Open external links in browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+app.whenReady().then(() => {
+  startApiServer();
+  
+  // Wait a bit for API to start
+  setTimeout(createWindow, 1000);
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  stopApiServer();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('before-quit', () => {
+  stopApiServer();
+});

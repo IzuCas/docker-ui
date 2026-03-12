@@ -20,7 +20,17 @@ import type {
   PruneReport,
 } from '../types';
 
-const API_URL = '/api';
+// Detect if running in Electron and get API URL accordingly
+function getApiUrl(): string {
+  // Check if running in Electron
+  if (window.electronAPI?.isElectron) {
+    return window.electronAPI.getApiUrl();
+  }
+  // In web mode, use proxy (relative URL) or environment variable
+  return import.meta.env.VITE_API_URL || '/api';
+}
+
+const API_URL = getApiUrl();
 
 async function request<T>(
   endpoint: string,
