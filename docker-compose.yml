@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: docker-manager-api
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      # Mount Docker socket to allow container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Persist configuration
+      - api-config:/root/.docker-manager
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    networks:
+      - docker-manager-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8001/api/system/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: docker-manager-app
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - docker-manager-network
+
+networks:
+  docker-manager-network:
+    driver: bridge
+
+volumes:
+  api-config:
