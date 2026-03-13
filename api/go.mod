@@ -7,6 +7,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-chi/cors v1.2.2
 )
 
 replace (

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Docker Manager
+Exec="/opt/Docker Manager/docker-management-ui" --no-sandbox --disable-gpu-sandbox %U
+Terminal=false
+Type=Application
+Icon=docker-management-ui
+StartupWMClass=Docker Manager
+Comment=Docker container management application with modern UI
+Categories=Development;

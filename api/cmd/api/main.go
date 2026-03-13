@@ -8,6 +8,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 
 	"app/example/internal/application/service"
 	"app/example/internal/infrastructure/docker"
@@ -58,6 +60,18 @@ func main() {
 
 	// Create Chi router
 	r := chi.NewMux()
+
+	// Add middlewares
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	// Create Huma API with OpenAPI documentation
 	api := humachi.New(r, huma.DefaultConfig("Docker Management API", "1.0.0"))

@@ -24,36 +24,54 @@ import type {
 function getApiUrl(): string {
   // Check if running in Electron
   if (window.electronAPI?.isElectron) {
-    return window.electronAPI.getApiUrl();
+    const url = window.electronAPI.getApiUrl();
+    console.log('[API] Running in Electron, API URL:', url);
+    return url;
   }
   // In web mode, use proxy (relative URL) or environment variable
-  return import.meta.env.VITE_API_URL || '/api';
+  const url = import.meta.env.VITE_API_URL || '/api';
+  console.log('[API] Running in web mode, API URL:', url);
+  return url;
 }
 
 const API_URL = getApiUrl();
+console.log('[API] Initialized with URL:', API_URL);
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  const url = `${API_URL}${endpoint}`;
+  console.log(`[API] Request: ${options.method || 'GET'} ${url}`);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || error.message || 'Request failed');
+    console.log(`[API] Response: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      console.error('[API] Error response:', error);
+      throw new Error(error.detail || error.message || 'Request failed');
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    const data = await response.json();
+    console.log(`[API] Data received:`, Array.isArray(data) ? `Array(${data.length})` : typeof data);
+    return data;
+  } catch (error) {
+    console.error(`[API] Fetch error for ${url}:`, error);
+    throw error;
   }
-
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return response.json();
 }
 
 // Container API

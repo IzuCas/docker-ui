@@ -2,20 +2,27 @@
   "name": "docker-management-ui",
   "private": true,
   "version": "1.0.0",
+  "description": "Docker container management application with modern UI",
+  "author": {
+    "name": "IzuCas",
+    "email": "izucas@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/IzuCas/docker-ui",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "dev:electron": "npm run build:electron && concurrently \"vite\" \"wait-on http://localhost:3000 && electron .\"",
     "build": "tsc -b && vite build",
-    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:prod": "tsc -b && ELECTRON=true vite build",
+    "build:electron": "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
     "preview": "vite preview",
     "electron": "npm run build:electron && electron .",
     "electron:dev": "NODE_ENV=development npm run electron",
-    "electron:build": "npm run build && npm run build:electron && electron-builder",
-    "electron:build:linux": "npm run build && npm run build:electron && electron-builder --linux",
-    "electron:build:win": "npm run build && npm run build:electron && electron-builder --win",
-    "electron:build:mac": "npm run build && npm run build:electron && electron-builder --mac"
+    "electron:build": "npm run build:prod && npm run build:electron && electron-builder",
+    "electron:build:linux": "npm run build:prod && npm run build:electron && electron-builder --linux",
+    "electron:build:win": "npm run build:prod && npm run build:electron && electron-builder --win",
+    "electron:build:mac": "npm run build:prod && npm run build:electron && electron-builder --mac"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",

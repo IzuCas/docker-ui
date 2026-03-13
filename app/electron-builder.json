@@ -30,7 +30,15 @@
   "linux": {
     "target": ["AppImage", "deb"],
     "category": "Development",
-    "icon": "build/icon.png"
+    "icon": "build/icon.png",
+    "maintainer": "IzuCas <izucas@users.noreply.github.com>",
+    "executableArgs": ["--no-sandbox", "--disable-gpu-sandbox"],
+    "desktop": {
+      "StartupWMClass": "Docker Manager"
+    }
+  },
+  "deb": {
+    "depends": ["docker.io"]
   },
   "nsis": {
     "oneClick": false,

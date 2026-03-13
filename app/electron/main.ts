@@ -1,8 +1,9 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, Menu } from 'electron';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,10 +15,41 @@ let apiProcess: ChildProcess | null = null;
 const isDev = !app.isPackaged;
 const API_PORT = process.env.API_PORT || '8001';
 
-function startApiServer(): void {
+// Check if API is already running
+function checkApiRunning(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: 'localhost',
+        port: parseInt(API_PORT),
+        path: '/system/ping',
+        method: 'GET',
+        timeout: 2000,
+      },
+      (res) => {
+        resolve(res.statusCode === 200);
+      }
+    );
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.end();
+  });
+}
+
+async function startApiServer(): Promise<void> {
   if (process.env.SKIP_API === 'true') {
     console.log('Skipping API server (SKIP_API=true)');
     console.log('Make sure to run the API separately: cd api && go run ./cmd/api');
+    return;
+  }
+
+  // Check if API is already running (e.g., from Docker container)
+  const apiAlreadyRunning = await checkApiRunning();
+  if (apiAlreadyRunning) {
+    console.log(`API already running on port ${API_PORT}, skipping embedded API startup`);
     return;
   }
 
@@ -101,6 +133,42 @@ function createWindow(): void {
     return { action: 'deny' };
   });
 
+  // Register F12 to toggle DevTools (works in both dev and prod)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      mainWindow?.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
+  // Create menu with DevTools option
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'File',
+      submenu: [
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: 'F12',
+          click: () => mainWindow?.webContents.toggleDevTools(),
+        },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+      ],
+    },
+  ]);
+  Menu.setApplicationMenu(menu);
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
@@ -113,8 +181,8 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(() => {
-  startApiServer();
+app.whenReady().then(async () => {
+  await startApiServer();
   
   // Wait a bit for API to start
   setTimeout(createWindow, 1000);

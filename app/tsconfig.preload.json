@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "strict": true,
@@ -12,6 +12,6 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["electron/main.ts"],
-  "exclude": ["electron/preload.ts", "node_modules", "dist", "release"]
+  "include": ["electron/preload.ts"],
+  "exclude": ["node_modules", "dist", "release"]
 }
