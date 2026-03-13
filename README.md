@@ -53,6 +53,84 @@ make electron
 cd app && npm run electron:build
 ```
 
+## Build do App Electron (Passo a Passo)
+
+O app Electron inclui a API Go embutida, permitindo execução standalone sem Docker.
+
+### 1. Compilar o binário da API
+
+```bash
+cd api
+go build -o bin/api ./cmd/api
+```
+
+### 2. Instalar dependências do frontend
+
+```bash
+cd app
+npm install
+```
+
+### 3. Gerar o pacote de distribuição
+
+```bash
+# Linux (gera .deb e AppImage)
+npm run electron:build
+
+# Apenas Linux
+npm run electron:build:linux
+
+# Windows
+npm run electron:build:win
+
+# macOS
+npm run electron:build:mac
+```
+
+### 4. Instalar o pacote gerado
+
+```bash
+# Debian/Ubuntu (.deb)
+sudo dpkg -i app/release/docker-management-ui_1.0.0_amd64.deb
+
+# Ou usar AppImage diretamente
+chmod +x "app/release/Docker Manager-1.0.0.AppImage"
+./app/release/Docker\ Manager-1.0.0.AppImage
+```
+
+### Arquivos gerados
+
+Após o build, os pacotes ficam em `app/release/`:
+
+| Arquivo | Plataforma | Descrição |
+|---------|------------|-----------|
+| `docker-management-ui_1.0.0_amd64.deb` | Linux | Pacote Debian/Ubuntu |
+| `Docker Manager-1.0.0.AppImage` | Linux | Executável portátil |
+| `Docker Manager Setup 1.0.0.exe` | Windows | Instalador NSIS |
+| `Docker Manager-1.0.0.dmg` | macOS | Instalador DMG |
+
+### Personalização do ícone
+
+Coloque os ícones na pasta `app/build/`:
+
+- `icon.png` - Linux (mínimo 256x256, recomendado 512x512)
+- `icon.ico` - Windows (256x256)
+- `icon.icns` - macOS (512x512 ou 1024x1024)
+
+```bash
+# Converter PNG para ICO (requer ImageMagick)
+convert icon.png -resize 256x256 icon.ico
+```
+
+### Como funciona a API embutida
+
+O app Electron verifica automaticamente:
+
+1. Se já existe uma API rodando na porta 8001 (ex: via Docker) → usa ela
+2. Se não → inicia o binário embutido em `/opt/Docker Manager/resources/api/api`
+
+Isso permite usar o app tanto com Docker quanto standalone.
+
 ## Pré-requisitos
 
 ### Para Docker Compose
