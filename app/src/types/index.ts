@@ -33,6 +33,14 @@ export interface ContainerSummary {
   created: string;
   state: string;
   status: string;
+  ports?: PortMapping[];
+}
+
+export interface PortMapping {
+  ip?: string;
+  privatePort: number;
+  publicPort?: number;
+  type: string;
 }
 
 export interface Mount {

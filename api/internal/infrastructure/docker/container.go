@@ -35,6 +35,15 @@ func (c *ContainerClient) List(ctx context.Context, all bool) ([]entity.Containe
 
 	result := make([]entity.ContainerSummary, len(containers))
 	for i, cont := range containers {
+		ports := make([]entity.PortMapping, len(cont.Ports))
+		for j, p := range cont.Ports {
+			ports[j] = entity.PortMapping{
+				IP:          p.IP,
+				PrivatePort: p.PrivatePort,
+				PublicPort:  p.PublicPort,
+				Type:        p.Type,
+			}
+		}
 		result[i] = entity.ContainerSummary{
 			ID:      cont.ID,
 			Names:   cont.Names,
@@ -44,6 +53,7 @@ func (c *ContainerClient) List(ctx context.Context, all bool) ([]entity.Containe
 			Created: time.Unix(cont.Created, 0),
 			State:   cont.State,
 			Status:  cont.Status,
+			Ports:   ports,
 		}
 	}
 

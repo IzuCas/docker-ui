@@ -24,6 +24,15 @@ func (h *ContainerHandler) List(ctx context.Context, input *dto.ContainerListInp
 
 	response := make([]dto.ContainerSummaryResponse, len(containers))
 	for i, c := range containers {
+		ports := make([]dto.PortResponse, len(c.Ports))
+		for j, p := range c.Ports {
+			ports[j] = dto.PortResponse{
+				IP:          p.IP,
+				PrivatePort: p.PrivatePort,
+				PublicPort:  p.PublicPort,
+				Type:        p.Type,
+			}
+		}
 		response[i] = dto.ContainerSummaryResponse{
 			ID:      c.ID,
 			Names:   c.Names,
@@ -33,6 +42,7 @@ func (h *ContainerHandler) List(ctx context.Context, input *dto.ContainerListInp
 			Created: c.Created.Format("2006-01-02T15:04:05Z"),
 			State:   c.State,
 			Status:  c.Status,
+			Ports:   ports,
 		}
 	}
 

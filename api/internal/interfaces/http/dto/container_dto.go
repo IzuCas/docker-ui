@@ -10,14 +10,22 @@ type ContainerListOutput struct {
 }
 
 type ContainerSummaryResponse struct {
-	ID      string   `json:"id"`
-	Names   []string `json:"names"`
-	Image   string   `json:"image"`
-	ImageID string   `json:"imageId"`
-	Command string   `json:"command"`
-	Created string   `json:"created"`
-	State   string   `json:"state"`
-	Status  string   `json:"status"`
+	ID      string         `json:"id"`
+	Names   []string       `json:"names"`
+	Image   string         `json:"image"`
+	ImageID string         `json:"imageId"`
+	Command string         `json:"command"`
+	Created string         `json:"created"`
+	State   string         `json:"state"`
+	Status  string         `json:"status"`
+	Ports   []PortResponse `json:"ports,omitempty"`
+}
+
+type PortResponse struct {
+	IP          string `json:"ip,omitempty"`
+	PrivatePort uint16 `json:"privatePort"`
+	PublicPort  uint16 `json:"publicPort,omitempty"`
+	Type        string `json:"type"`
 }
 
 // Container Inspect
