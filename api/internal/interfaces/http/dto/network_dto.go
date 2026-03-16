@@ -10,14 +10,16 @@ type NetworkListOutput struct {
 }
 
 type NetworkSummaryResponse struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Driver     string `json:"driver"`
-	Scope      string `json:"scope"`
-	Internal   bool   `json:"internal"`
-	Attachable bool   `json:"attachable"`
-	Ingress    bool   `json:"ingress"`
-	Created    string `json:"created"`
+	ID             string       `json:"id"`
+	Name           string       `json:"name"`
+	Driver         string       `json:"driver"`
+	Scope          string       `json:"scope"`
+	Internal       bool         `json:"internal"`
+	Attachable     bool         `json:"attachable"`
+	Ingress        bool         `json:"ingress"`
+	Created        string       `json:"created"`
+	ContainerCount int          `json:"containerCount"`
+	IPAM           IPAMResponse `json:"ipam"`
 }
 
 // Network Inspect

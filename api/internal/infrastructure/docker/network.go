@@ -32,15 +32,35 @@ func (c *NetworkClient) List(ctx context.Context, filterArgs map[string]string) 
 
 	result := make([]entity.NetworkSummary, len(networks))
 	for i, net := range networks {
+		ipamConfigs := make([]entity.IPAMConfig, len(net.IPAM.Config))
+		for j, cfg := range net.IPAM.Config {
+			ipamConfigs[j] = entity.IPAMConfig{
+				Subnet:  cfg.Subnet,
+				Gateway: cfg.Gateway,
+			}
+		}
+
+		// Get container count via inspect (NetworkList doesn't return containers)
+		containerCount := 0
+		if inspected, err := c.docker.NetworkInspect(ctx, net.ID, types.NetworkInspectOptions{}); err == nil {
+			containerCount = len(inspected.Containers)
+		}
+
 		result[i] = entity.NetworkSummary{
-			ID:         net.ID,
-			Name:       net.Name,
-			Driver:     net.Driver,
-			Scope:      net.Scope,
-			Internal:   net.Internal,
-			Attachable: net.Attachable,
-			Ingress:    net.Ingress,
-			Created:    net.Created,
+			ID:             net.ID,
+			Name:           net.Name,
+			Driver:         net.Driver,
+			Scope:          net.Scope,
+			Internal:       net.Internal,
+			Attachable:     net.Attachable,
+			Ingress:        net.Ingress,
+			Created:        net.Created,
+			ContainerCount: containerCount,
+			IPAM: entity.IPAM{
+				Driver:  net.IPAM.Driver,
+				Config:  ipamConfigs,
+				Options: net.IPAM.Options,
+			},
 		}
 	}
 

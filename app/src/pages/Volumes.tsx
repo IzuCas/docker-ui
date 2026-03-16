@@ -136,7 +136,7 @@ export default function VolumesPage() {
                     <td>
                       <div className="action-buttons">
                         <button
-                          className="btn-icon"
+                          className="btn-icon-danger"
                           onClick={() => handleRemove(volume.name)}
                           title="Remove"
                         >

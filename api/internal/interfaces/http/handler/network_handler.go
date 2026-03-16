@@ -1,11 +1,11 @@
 package handler
 
 import (
-"context"
+	"context"
 
-"app/example/internal/application/service"
-"app/example/internal/domain/entity"
-"app/example/internal/interfaces/http/dto"
+	"app/example/internal/application/service"
+	"app/example/internal/domain/entity"
+	"app/example/internal/interfaces/http/dto"
 )
 
 type NetworkHandler struct {
@@ -24,15 +24,28 @@ func (h *NetworkHandler) List(ctx context.Context, input *dto.NetworkListInput) 
 
 	response := make([]dto.NetworkSummaryResponse, len(networks))
 	for i, n := range networks {
+		ipamConfigs := make([]dto.IPAMConfigResponse, len(n.IPAM.Config))
+		for j, c := range n.IPAM.Config {
+			ipamConfigs[j] = dto.IPAMConfigResponse{
+				Subnet:  c.Subnet,
+				Gateway: c.Gateway,
+			}
+		}
 		response[i] = dto.NetworkSummaryResponse{
-			ID:         n.ID,
-			Name:       n.Name,
-			Driver:     n.Driver,
-			Scope:      n.Scope,
-			Internal:   n.Internal,
-			Attachable: n.Attachable,
-			Ingress:    n.Ingress,
-			Created:    n.Created.Format("2006-01-02T15:04:05.000000000Z07:00"),
+			ID:             n.ID,
+			Name:           n.Name,
+			Driver:         n.Driver,
+			Scope:          n.Scope,
+			Internal:       n.Internal,
+			Attachable:     n.Attachable,
+			Ingress:        n.Ingress,
+			Created:        n.Created.Format("2006-01-02T15:04:05.000000000Z07:00"),
+			ContainerCount: n.ContainerCount,
+			IPAM: dto.IPAMResponse{
+				Driver:  n.IPAM.Driver,
+				Config:  ipamConfigs,
+				Options: n.IPAM.Options,
+			},
 		}
 	}
 

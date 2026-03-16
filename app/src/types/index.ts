@@ -211,6 +211,7 @@ export interface NetworkSummary {
   attachable: boolean;
   ingress: boolean;
   ipam: IPAM;
+  containerCount: number;
 }
 
 export interface IPAM {

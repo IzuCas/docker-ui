@@ -106,6 +106,7 @@ export default function NetworksPage() {
                   <th>ID</th>
                   <th>Driver</th>
                   <th>Scope</th>
+                  <th>Containers</th>
                   <th>Subnet</th>
                   <th>Gateway</th>
                   <th>Actions</th>
@@ -129,6 +130,11 @@ export default function NetworksPage() {
                       <span className="badge badge-info">{network.driver}</span>
                     </td>
                     <td>{network.scope}</td>
+                    <td>
+                      <span className={`badge ${network.containerCount > 0 ? 'badge-success' : 'badge-secondary'}`}>
+                        {network.containerCount}
+                      </span>
+                    </td>
                     <td className="code" style={{ fontSize: '0.75rem' }}>
                       {network.ipam?.config?.[0]?.subnet || '-'}
                     </td>
@@ -153,7 +159,7 @@ export default function NetworksPage() {
                         </button>
                         {!isSystemNetwork(network.name) && (
                           <button
-                            className="btn-icon"
+                            className="btn-icon-danger"
                             onClick={() => handleRemove(network.id, network.name)}
                             title="Remove"
                           >

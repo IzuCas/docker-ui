@@ -72,11 +72,19 @@
   }
 
   .btn-icon {
-    @apply p-1.5 border-none bg-transparent;
+    @apply p-2 border-none bg-transparent rounded-md text-text-secondary transition-colors duration-150;
   }
 
   .btn-icon:hover {
-    @apply bg-bg-tertiary;
+    @apply bg-bg-tertiary text-text-primary;
+  }
+
+  .btn-icon-danger {
+    @apply p-2 border-none bg-transparent rounded-md text-text-secondary transition-colors duration-150;
+  }
+
+  .btn-icon-danger:hover {
+    @apply bg-accent-red/20 text-accent-red;
   }
 
   /* Cards */
@@ -189,6 +197,10 @@
   /* Utilities */
   .actions {
     @apply flex gap-1;
+  }
+
+  .action-buttons {
+    @apply flex items-center gap-1;
   }
 
   .truncate {

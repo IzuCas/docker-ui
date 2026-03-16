@@ -87,14 +87,16 @@ type EndpointIPAMConfig struct {
 
 // NetworkSummary represents a summary of a network
 type NetworkSummary struct {
-	ID         string
-	Name       string
-	Driver     string
-	Scope      string
-	EnableIPv6 bool
-	Internal   bool
-	Attachable bool
-	Ingress    bool
-	Created    time.Time
-	Labels     map[string]string
+	ID             string
+	Name           string
+	Driver         string
+	Scope          string
+	EnableIPv6     bool
+	Internal       bool
+	Attachable     bool
+	Ingress        bool
+	Created        time.Time
+	Labels         map[string]string
+	ContainerCount int
+	IPAM           IPAM
 }
