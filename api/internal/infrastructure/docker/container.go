@@ -646,3 +646,58 @@ func (c *ContainerClient) StreamLogs(ctx context.Context, id string, tail string
 
 	return logsChan, errChan
 }
+
+// InspectRaw returns the raw Docker container inspect result
+func (c *ContainerClient) InspectRaw(ctx context.Context, id string) (interface{}, error) {
+	return c.docker.ContainerInspect(ctx, id)
+}
+
+// UpdateEnv updates container environment variables by recreating the container
+func (c *ContainerClient) UpdateEnv(ctx context.Context, id string, env []string) (string, error) {
+	// Get the current container configuration
+	cont, err := c.docker.ContainerInspect(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if container was running
+	wasRunning := cont.State.Running
+
+	// Stop the container if it's running
+	if wasRunning {
+		timeout := 10
+		if err := c.docker.ContainerStop(ctx, id, container.StopOptions{Timeout: &timeout}); err != nil {
+			return "", err
+		}
+	}
+
+	// Get the container name (remove leading slash)
+	name := cont.Name
+	if len(name) > 0 && name[0] == '/' {
+		name = name[1:]
+	}
+
+	// Remove the old container
+	if err := c.docker.ContainerRemove(ctx, id, container.RemoveOptions{Force: true}); err != nil {
+		return "", err
+	}
+
+	// Clone the config with the new environment
+	newConfig := *cont.Config
+	newConfig.Env = env
+
+	// Create the new container
+	resp, err := c.docker.ContainerCreate(ctx, &newConfig, cont.HostConfig, nil, nil, name)
+	if err != nil {
+		return "", err
+	}
+
+	// Start the container if it was running before
+	if wasRunning {
+		if err := c.docker.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+			return "", err
+		}
+	}
+
+	return resp.ID, nil
+}

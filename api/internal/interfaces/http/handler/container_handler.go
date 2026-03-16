@@ -296,3 +296,17 @@ func (h *ContainerHandler) Top(ctx context.Context, input *dto.ContainerTopInput
 		},
 	}, nil
 }
+
+func (h *ContainerHandler) UpdateEnv(ctx context.Context, input *dto.ContainerUpdateEnvInput) (*dto.ContainerUpdateEnvOutput, error) {
+	newID, err := h.service.UpdateEnv(ctx, input.ID, input.Body.Env)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.ContainerUpdateEnvOutput{
+		Body: dto.ContainerUpdateEnvResponse{
+			ID:      newID,
+			Message: "Container recreated with updated environment variables",
+		},
+	}, nil
+}

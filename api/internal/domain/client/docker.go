@@ -12,6 +12,7 @@ import (
 type ContainerClient interface {
 	List(ctx context.Context, all bool) ([]entity.ContainerSummary, error)
 	Inspect(ctx context.Context, id string) (*entity.Container, error)
+	InspectRaw(ctx context.Context, id string) (interface{}, error)
 	Create(ctx context.Context, config entity.ContainerCreateConfig) (string, error)
 	Start(ctx context.Context, id string) error
 	Stop(ctx context.Context, id string, timeout int) error
@@ -25,6 +26,7 @@ type ContainerClient interface {
 	Stats(ctx context.Context, id string) (*entity.ContainerStats, error)
 	Exec(ctx context.Context, id string, config entity.ExecConfig) (*entity.ExecResult, error)
 	Top(ctx context.Context, id string, psArgs string) ([]string, [][]string, error)
+	UpdateEnv(ctx context.Context, id string, env []string) (string, error)
 	// Streaming methods
 	StreamEvents(ctx context.Context) (<-chan entity.DockerEvent, <-chan error)
 	StreamStats(ctx context.Context, id string) (<-chan *entity.ContainerStats, <-chan error)

@@ -10,10 +10,20 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
+  Edit2,
+  Plus,
+  Save,
+  X,
+  Trash,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
 import { useContainerStats, useContainerLogs } from '../hooks/useWebSocket';
 import type { Container, ContainerStats, ExecResult } from '../types';
+
+interface EnvVariable {
+  key: string;
+  value: string;
+}
 
 export default function ContainerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +37,11 @@ export default function ContainerDetailPage() {
   const [execLoading, setExecLoading] = useState(false);
   const [useRealtimeStats, setUseRealtimeStats] = useState(true);
   const [useRealtimeLogs, setUseRealtimeLogs] = useState(true);
+  
+  // Environment editing state
+  const [isEditingEnv, setIsEditingEnv] = useState(false);
+  const [editedEnv, setEditedEnv] = useState<EnvVariable[]>([]);
+  const [envSaving, setEnvSaving] = useState(false);
 
   // Real-time stats via WebSocket
   const { 
@@ -175,6 +190,60 @@ export default function ContainerDetailPage() {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Environment variable editing functions
+  const startEditingEnv = () => {
+    if (container?.env) {
+      setEditedEnv(
+        container.env.map((envVar) => {
+          const [key, ...valueParts] = envVar.split('=');
+          return { key, value: valueParts.join('=') };
+        })
+      );
+    } else {
+      setEditedEnv([]);
+    }
+    setIsEditingEnv(true);
+  };
+
+  const cancelEditingEnv = () => {
+    setIsEditingEnv(false);
+    setEditedEnv([]);
+  };
+
+  const addEnvVariable = () => {
+    setEditedEnv([...editedEnv, { key: '', value: '' }]);
+  };
+
+  const removeEnvVariable = (index: number) => {
+    setEditedEnv(editedEnv.filter((_, i) => i !== index));
+  };
+
+  const updateEnvVariable = (index: number, field: 'key' | 'value', value: string) => {
+    const updated = [...editedEnv];
+    updated[index][field] = value;
+    setEditedEnv(updated);
+  };
+
+  const saveEnvVariables = async () => {
+    if (!id) return;
+    
+    // Validate - remove empty keys
+    const validEnv = editedEnv.filter((e) => e.key.trim() !== '');
+    const envStrings = validEnv.map((e) => `${e.key}=${e.value}`);
+    
+    try {
+      setEnvSaving(true);
+      const result = await containerApi.updateEnv(id, envStrings);
+      // Navigate to the new container ID
+      navigate(`/containers/${result.id}`, { replace: true });
+      setIsEditingEnv(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update environment variables');
+    } finally {
+      setEnvSaving(false);
+    }
   };
 
   if (loading) {
@@ -464,7 +533,83 @@ export default function ContainerDetailPage() {
       {activeTab === 'env' && (
         <div className="card">
           <div className="card-body">
-            {container.env && container.env.length > 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>Environment Variables</h3>
+              {!isEditingEnv ? (
+                <button className="btn btn-primary" onClick={startEditingEnv}>
+                  <Edit2 size={16} />
+                  Edit
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn" onClick={cancelEditingEnv} disabled={envSaving}>
+                    <X size={16} />
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={saveEnvVariables} disabled={envSaving}>
+                    <Save size={16} />
+                    {envSaving ? 'Saving...' : 'Save & Restart'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {isEditingEnv ? (
+              <div>
+                <div style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  ⚠️ Saving will recreate the container with the new environment variables.
+                </div>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '30%' }}>Variable</th>
+                      <th>Value</th>
+                      <th style={{ width: '60px' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editedEnv.map((env, i) => (
+                      <tr key={i}>
+                        <td>
+                          <input
+                            type="text"
+                            className="input"
+                            value={env.key}
+                            onChange={(e) => updateEnvVariable(i, 'key', e.target.value)}
+                            placeholder="VARIABLE_NAME"
+                            style={{ fontFamily: 'monospace' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="input"
+                            value={env.value}
+                            onChange={(e) => updateEnvVariable(i, 'value', e.target.value)}
+                            placeholder="value"
+                            style={{ fontFamily: 'monospace' }}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            className="btn-icon"
+                            onClick={() => removeEnvVariable(i)}
+                            title="Remove variable"
+                            style={{ color: 'var(--accent-red)' }}
+                          >
+                            <Trash size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button className="btn" onClick={addEnvVariable} style={{ marginTop: '0.5rem' }}>
+                  <Plus size={16} />
+                  Add Variable
+                </button>
+              </div>
+            ) : container.env && container.env.length > 0 ? (
               <table className="table">
                 <thead>
                   <tr>
@@ -486,7 +631,13 @@ export default function ContainerDetailPage() {
                 </tbody>
               </table>
             ) : (
-              <div style={{ color: 'var(--text-secondary)' }}>No environment variables</div>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                No environment variables defined.
+                <button className="btn" onClick={startEditingEnv} style={{ marginLeft: '1rem' }}>
+                  <Plus size={16} />
+                  Add Variables
+                </button>
+              </div>
             )}
           </div>
         </div>

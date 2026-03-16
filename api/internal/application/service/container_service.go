@@ -88,3 +88,7 @@ func (s *ContainerService) StreamStats(ctx context.Context, id string) (<-chan *
 func (s *ContainerService) StreamLogs(ctx context.Context, id string, tail string) (<-chan entity.LogEntry, <-chan error) {
 	return s.client.StreamLogs(ctx, id, tail)
 }
+
+func (s *ContainerService) UpdateEnv(ctx context.Context, id string, env []string) (string, error) {
+	return s.client.UpdateEnv(ctx, id, env)
+}

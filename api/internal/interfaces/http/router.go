@@ -198,6 +198,15 @@ func (r *Router) registerContainerRoutes(api huma.API) {
 		Description: "Returns the running processes in a container",
 		Tags:        []string{"Containers"},
 	}, r.containerHandler.Top)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "update-container-env",
+		Method:      "PUT",
+		Path:        "/containers/{id}/env",
+		Summary:     "Update container environment",
+		Description: "Updates container environment variables by recreating the container",
+		Tags:        []string{"Containers"},
+	}, r.containerHandler.UpdateEnv)
 }
 
 func (r *Router) registerImageRoutes(api huma.API) {

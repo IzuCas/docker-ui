@@ -134,6 +134,12 @@ export const containerApi = {
     return request<{ titles: string[]; processes: string[][] }>(`/containers/${id}/top${params}`);
   },
 
+  updateEnv: (id: string, env: string[]) =>
+    request<{ id: string; message: string }>(`/containers/${id}/env`, {
+      method: 'PUT',
+      body: JSON.stringify({ env }),
+    }),
+
   prune: () =>
     request<{ containersDeleted: string[]; spaceReclaimed: number }>('/containers/prune', {
       method: 'POST',

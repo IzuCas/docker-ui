@@ -199,6 +199,25 @@ type ExecResultResponse struct {
 	Output   string `json:"output"`
 }
 
+// Container Update Environment
+type ContainerUpdateEnvInput struct {
+	ID   string `path:"id" doc:"Container ID or name"`
+	Body ContainerUpdateEnvRequest
+}
+
+type ContainerUpdateEnvRequest struct {
+	Env []string `json:"env" required:"true" doc:"Environment variables in KEY=VALUE format"`
+}
+
+type ContainerUpdateEnvResponse struct {
+	ID      string `json:"id"`
+	Message string `json:"message"`
+}
+
+type ContainerUpdateEnvOutput struct {
+	Body ContainerUpdateEnvResponse
+}
+
 // Container Top
 type ContainerTopInput struct {
 	ID     string `path:"id" doc:"Container ID or name"`
