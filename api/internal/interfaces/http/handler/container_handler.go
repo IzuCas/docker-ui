@@ -6,6 +6,7 @@ import (
 	"app/example/internal/application/service"
 	"app/example/internal/domain/entity"
 	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/logger"
 )
 
 type ContainerHandler struct {
@@ -17,10 +18,15 @@ func NewContainerHandler(service *service.ContainerService) *ContainerHandler {
 }
 
 func (h *ContainerHandler) List(ctx context.Context, input *dto.ContainerListInput) (*dto.ContainerListOutput, error) {
+	logger.Info("Listing containers", logger.Bool("all", input.All))
+
 	containers, err := h.service.List(ctx, input.All)
 	if err != nil {
+		logger.Error("Failed to list containers", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Listed containers successfully", logger.Int("count", len(containers)))
 
 	response := make([]dto.ContainerSummaryResponse, len(containers))
 	for i, c := range containers {
@@ -51,10 +57,15 @@ func (h *ContainerHandler) List(ctx context.Context, input *dto.ContainerListInp
 }
 
 func (h *ContainerHandler) Inspect(ctx context.Context, input *dto.ContainerInspectInput) (*dto.ContainerInspectOutput, error) {
+	logger.Info("Inspecting container", logger.String("container_id", input.ID))
+
 	container, err := h.service.Inspect(ctx, input.ID)
 	if err != nil {
+		logger.Error("Failed to inspect container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Container inspected successfully", logger.String("container_id", input.ID), logger.String("name", container.Name))
 
 	mounts := make([]dto.MountResponse, len(container.Mounts))
 	for i, m := range container.Mounts {
@@ -125,6 +136,8 @@ func (h *ContainerHandler) Inspect(ctx context.Context, input *dto.ContainerInsp
 }
 
 func (h *ContainerHandler) Create(ctx context.Context, input *dto.ContainerCreateInput) (*dto.ContainerCreateOutput, error) {
+	logger.Info("Creating container", logger.String("name", input.Body.Name), logger.String("image", input.Body.Image))
+
 	portBindings := make(map[string][]entity.PortBinding)
 	for k, v := range input.Body.PortBindings {
 		bindings := make([]entity.PortBinding, len(v))
@@ -173,8 +186,11 @@ func (h *ContainerHandler) Create(ctx context.Context, input *dto.ContainerCreat
 
 	id, err := h.service.Create(ctx, config)
 	if err != nil {
+		logger.Error("Failed to create container", logger.String("name", input.Body.Name), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container created successfully", logger.String("container_id", id), logger.String("name", input.Body.Name))
 
 	return &dto.ContainerCreateOutput{
 		Body: struct {
@@ -184,74 +200,116 @@ func (h *ContainerHandler) Create(ctx context.Context, input *dto.ContainerCreat
 }
 
 func (h *ContainerHandler) Start(ctx context.Context, input *dto.ContainerActionInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Starting container", logger.String("container_id", input.ID))
+
 	if err := h.service.Start(ctx, input.ID); err != nil {
+		logger.Error("Failed to start container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container started successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Stop(ctx context.Context, input *dto.ContainerStopInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Stopping container", logger.String("container_id", input.ID), logger.Int("timeout", input.Timeout))
+
 	timeout := input.Timeout
 	if timeout == 0 {
 		timeout = 10
 	}
 	if err := h.service.Stop(ctx, input.ID, timeout); err != nil {
+		logger.Error("Failed to stop container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container stopped successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Restart(ctx context.Context, input *dto.ContainerStopInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Restarting container", logger.String("container_id", input.ID), logger.Int("timeout", input.Timeout))
+
 	timeout := input.Timeout
 	if timeout == 0 {
 		timeout = 10
 	}
 	if err := h.service.Restart(ctx, input.ID, timeout); err != nil {
+		logger.Error("Failed to restart container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container restarted successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Pause(ctx context.Context, input *dto.ContainerActionInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Pausing container", logger.String("container_id", input.ID))
+
 	if err := h.service.Pause(ctx, input.ID); err != nil {
+		logger.Error("Failed to pause container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container paused successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Unpause(ctx context.Context, input *dto.ContainerActionInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Unpausing container", logger.String("container_id", input.ID))
+
 	if err := h.service.Unpause(ctx, input.ID); err != nil {
+		logger.Error("Failed to unpause container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container unpaused successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Kill(ctx context.Context, input *dto.ContainerKillInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Killing container", logger.String("container_id", input.ID), logger.String("signal", input.Signal))
+
 	signal := input.Signal
 	if signal == "" {
 		signal = "SIGKILL"
 	}
 	if err := h.service.Kill(ctx, input.ID, signal); err != nil {
+		logger.Error("Failed to kill container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container killed successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Remove(ctx context.Context, input *dto.ContainerRemoveInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Removing container", logger.String("container_id", input.ID), logger.Bool("force", input.Force), logger.Bool("remove_volumes", input.RemoveVolumes))
+
 	if err := h.service.Remove(ctx, input.ID, input.Force, input.RemoveVolumes); err != nil {
+		logger.Error("Failed to remove container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container removed successfully", logger.String("container_id", input.ID))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Rename(ctx context.Context, input *dto.ContainerRenameInput) (*dto.ContainerActionOutput, error) {
+	logger.Info("Renaming container", logger.String("container_id", input.ID), logger.String("new_name", input.Name))
+
 	if err := h.service.Rename(ctx, input.ID, input.Name); err != nil {
+		logger.Error("Failed to rename container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container renamed successfully", logger.String("container_id", input.ID), logger.String("new_name", input.Name))
 	return &dto.ContainerActionOutput{}, nil
 }
 
 func (h *ContainerHandler) Logs(ctx context.Context, input *dto.ContainerLogsInput) (*dto.ContainerLogsOutput, error) {
+	logger.Debug("Fetching container logs", logger.String("container_id", input.ID), logger.String("tail", input.Tail))
+
 	opts := entity.ContainerLogsOptions{
 		ShowStdout: input.Stdout,
 		ShowStderr: input.Stderr,
@@ -264,8 +322,11 @@ func (h *ContainerHandler) Logs(ctx context.Context, input *dto.ContainerLogsInp
 
 	logs, err := h.service.Logs(ctx, input.ID, opts)
 	if err != nil {
+		logger.Error("Failed to fetch container logs", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Container logs fetched", logger.String("container_id", input.ID), logger.Int("length", len(logs)))
 
 	return &dto.ContainerLogsOutput{
 		Body: struct {
@@ -275,10 +336,15 @@ func (h *ContainerHandler) Logs(ctx context.Context, input *dto.ContainerLogsInp
 }
 
 func (h *ContainerHandler) Stats(ctx context.Context, input *dto.ContainerStatsInput) (*dto.ContainerStatsOutput, error) {
+	logger.Debug("Fetching container stats", logger.String("container_id", input.ID))
+
 	stats, err := h.service.Stats(ctx, input.ID)
 	if err != nil {
+		logger.Error("Failed to fetch container stats", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Container stats fetched", logger.String("container_id", input.ID), logger.Float64("cpu_percent", stats.CPUPercent))
 
 	return &dto.ContainerStatsOutput{
 		Body: dto.ContainerStatsResponse{
@@ -296,6 +362,8 @@ func (h *ContainerHandler) Stats(ctx context.Context, input *dto.ContainerStatsI
 }
 
 func (h *ContainerHandler) Exec(ctx context.Context, input *dto.ContainerExecInput) (*dto.ContainerExecOutput, error) {
+	logger.Info("Executing command in container", logger.String("container_id", input.ID), logger.Any("cmd", input.Body.Cmd))
+
 	config := entity.ExecConfig{
 		Cmd:          input.Body.Cmd,
 		AttachStdout: true,
@@ -309,8 +377,11 @@ func (h *ContainerHandler) Exec(ctx context.Context, input *dto.ContainerExecInp
 
 	result, err := h.service.Exec(ctx, input.ID, config)
 	if err != nil {
+		logger.Error("Failed to execute command in container", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Command executed in container", logger.String("container_id", input.ID), logger.Int("exit_code", result.ExitCode))
 
 	return &dto.ContainerExecOutput{
 		Body: dto.ExecResultResponse{
@@ -321,6 +392,8 @@ func (h *ContainerHandler) Exec(ctx context.Context, input *dto.ContainerExecInp
 }
 
 func (h *ContainerHandler) Top(ctx context.Context, input *dto.ContainerTopInput) (*dto.ContainerTopOutput, error) {
+	logger.Debug("Fetching container processes", logger.String("container_id", input.ID))
+
 	psArgs := input.PsArgs
 	if psArgs == "" {
 		psArgs = "aux"
@@ -328,8 +401,11 @@ func (h *ContainerHandler) Top(ctx context.Context, input *dto.ContainerTopInput
 
 	titles, processes, err := h.service.Top(ctx, input.ID, psArgs)
 	if err != nil {
+		logger.Error("Failed to fetch container processes", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Container processes fetched", logger.String("container_id", input.ID), logger.Int("processes_count", len(processes)))
 
 	return &dto.ContainerTopOutput{
 		Body: dto.ContainerTopResponse{
@@ -340,10 +416,15 @@ func (h *ContainerHandler) Top(ctx context.Context, input *dto.ContainerTopInput
 }
 
 func (h *ContainerHandler) UpdateEnv(ctx context.Context, input *dto.ContainerUpdateEnvInput) (*dto.ContainerUpdateEnvOutput, error) {
+	logger.Info("Updating container environment", logger.String("container_id", input.ID), logger.Int("env_count", len(input.Body.Env)))
+
 	newID, err := h.service.UpdateEnv(ctx, input.ID, input.Body.Env)
 	if err != nil {
+		logger.Error("Failed to update container environment", logger.String("container_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Container environment updated", logger.String("old_id", input.ID), logger.String("new_id", newID))
 
 	return &dto.ContainerUpdateEnvOutput{
 		Body: dto.ContainerUpdateEnvResponse{

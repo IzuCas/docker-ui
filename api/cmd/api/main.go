@@ -1,28 +1,45 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
+	"os"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
 	"app/example/internal/application/service"
 	"app/example/internal/infrastructure/docker"
 	httpRouter "app/example/internal/interfaces/http"
 	"app/example/internal/interfaces/http/handler"
+	"app/example/pkg/logger"
+	"app/example/pkg/middleware"
 )
 
 func main() {
+	// Initialize logger
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+	if err := logger.Init(env); err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	defer logger.Sync()
+
+	logger.Info("Starting Docker Management API",
+		logger.String("env", env),
+		logger.String("version", "1.0.0"),
+	)
+
 	// Initialize Docker client
 	dockerClient, err := docker.NewClient()
 	if err != nil {
-		log.Fatalf("Failed to create Docker client: %v", err)
+		logger.Fatal("Failed to create Docker client", logger.Err(err))
 	}
+	logger.Info("Docker client initialized")
 
 	// Initialize infrastructure clients
 	containerClient := docker.NewContainerClient(dockerClient)
@@ -64,8 +81,9 @@ func main() {
 	r := chi.NewMux()
 
 	// Add middlewares
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(chiMiddleware.RequestID)
+	r.Use(middleware.ZapLogger())
+	r.Use(chiMiddleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
@@ -85,15 +103,20 @@ func main() {
 	router.RegisterRoutes(api)
 
 	// Start server
-	fmt.Println("Starting Docker Management API server on :8001")
-	fmt.Println("API Documentation available at http://localhost:8001/docs")
-	fmt.Println("WebSocket endpoints:")
-	fmt.Println("  - ws://localhost:8001/ws/events       (Docker events stream)")
-	fmt.Println("  - ws://localhost:8001/ws/containers   (Container list with real-time updates)")
-	fmt.Println("  - ws://localhost:8001/ws/containers/stats?id=<container_id>  (Container stats stream)")
-	fmt.Println("  - ws://localhost:8001/ws/containers/logs?id=<container_id>   (Container logs stream)")
-	fmt.Println("  - ws://localhost:8001/ws/system       (System info stream)")
+	logger.Info("Server configuration",
+		logger.String("address", ":8001"),
+		logger.String("docs", "http://localhost:8001/docs"),
+	)
+	logger.Info("WebSocket endpoints available",
+		logger.String("events", "ws://localhost:8001/ws/events"),
+		logger.String("containers", "ws://localhost:8001/ws/containers"),
+		logger.String("stats", "ws://localhost:8001/ws/containers/stats?id=<id>"),
+		logger.String("logs", "ws://localhost:8001/ws/containers/logs?id=<id>"),
+		logger.String("system", "ws://localhost:8001/ws/system"),
+	)
+
+	logger.Info("Starting HTTP server on :8001")
 	if err := http.ListenAndServe(":8001", r); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logger.Fatal("Failed to start server", logger.Err(err))
 	}
 }

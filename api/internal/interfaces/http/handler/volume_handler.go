@@ -6,6 +6,7 @@ import (
 	"app/example/internal/application/service"
 	"app/example/internal/domain/entity"
 	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/logger"
 )
 
 type VolumeHandler struct {
@@ -17,10 +18,15 @@ func NewVolumeHandler(service *service.VolumeService) *VolumeHandler {
 }
 
 func (h *VolumeHandler) List(ctx context.Context, input *dto.VolumeListInput) (*dto.VolumeListOutput, error) {
+	logger.Info("Listing volumes")
+
 	volumes, err := h.service.List(ctx, input.Filters)
 	if err != nil {
+		logger.Error("Failed to list volumes", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Listed volumes successfully", logger.Int("count", len(volumes)))
 
 	response := make([]dto.VolumeResponse, len(volumes))
 	for i, v := range volumes {
@@ -47,10 +53,15 @@ func (h *VolumeHandler) List(ctx context.Context, input *dto.VolumeListInput) (*
 }
 
 func (h *VolumeHandler) Inspect(ctx context.Context, input *dto.VolumeInspectInput) (*dto.VolumeInspectOutput, error) {
+	logger.Info("Inspecting volume", logger.String("name", input.Name))
+
 	volume, err := h.service.Inspect(ctx, input.Name)
 	if err != nil {
+		logger.Error("Failed to inspect volume", logger.String("name", input.Name), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Volume inspected successfully", logger.String("name", input.Name))
 
 	var usage *dto.VolumeUsageResponse
 	if volume.UsageData != nil {
@@ -75,6 +86,8 @@ func (h *VolumeHandler) Inspect(ctx context.Context, input *dto.VolumeInspectInp
 }
 
 func (h *VolumeHandler) Create(ctx context.Context, input *dto.VolumeCreateInput) (*dto.VolumeCreateOutput, error) {
+	logger.Info("Creating volume", logger.String("name", input.Body.Name), logger.String("driver", input.Body.Driver))
+
 	opts := entity.VolumeCreateOptions{
 		Name:       input.Body.Name,
 		Driver:     input.Body.Driver,
@@ -84,8 +97,11 @@ func (h *VolumeHandler) Create(ctx context.Context, input *dto.VolumeCreateInput
 
 	volume, err := h.service.Create(ctx, opts)
 	if err != nil {
+		logger.Error("Failed to create volume", logger.String("name", input.Body.Name), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Volume created successfully", logger.String("name", volume.Name))
 
 	return &dto.VolumeCreateOutput{
 		Body: dto.VolumeResponse{
@@ -101,17 +117,27 @@ func (h *VolumeHandler) Create(ctx context.Context, input *dto.VolumeCreateInput
 }
 
 func (h *VolumeHandler) Remove(ctx context.Context, input *dto.VolumeRemoveInput) (*dto.VolumeRemoveOutput, error) {
+	logger.Info("Removing volume", logger.String("name", input.Name), logger.Bool("force", input.Force))
+
 	if err := h.service.Remove(ctx, input.Name, input.Force); err != nil {
+		logger.Error("Failed to remove volume", logger.String("name", input.Name), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Volume removed successfully", logger.String("name", input.Name))
 	return &dto.VolumeRemoveOutput{}, nil
 }
 
 func (h *VolumeHandler) Prune(ctx context.Context, input *dto.VolumePruneInput) (*dto.VolumePruneOutput, error) {
+	logger.Info("Pruning unused volumes")
+
 	report, err := h.service.Prune(ctx)
 	if err != nil {
+		logger.Error("Failed to prune volumes", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Volumes pruned successfully", logger.Int("deleted_count", len(report.VolumesDeleted)), logger.Int64("space_reclaimed", int64(report.SpaceReclaimed)))
 
 	return &dto.VolumePruneOutput{
 		Body: dto.VolumePruneResponse{

@@ -6,6 +6,7 @@ import (
 	"app/example/internal/application/service"
 	"app/example/internal/domain/entity"
 	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/logger"
 )
 
 type RegistryHandler struct {
@@ -17,6 +18,8 @@ func NewRegistryHandler(service *service.RegistryService) *RegistryHandler {
 }
 
 func (h *RegistryHandler) Login(ctx context.Context, input *dto.RegistryLoginInput) (*dto.RegistryLoginOutput, error) {
+	logger.Info("Registry login", logger.String("server", input.Body.ServerAddress), logger.String("username", input.Body.Username))
+
 	auth := entity.RegistryAuth{
 		Username:      input.Body.Username,
 		Password:      input.Body.Password,
@@ -25,8 +28,11 @@ func (h *RegistryHandler) Login(ctx context.Context, input *dto.RegistryLoginInp
 
 	result, err := h.service.Login(ctx, auth)
 	if err != nil {
+		logger.Error("Registry login failed", logger.String("server", input.Body.ServerAddress), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Registry login successful", logger.String("server", input.Body.ServerAddress))
 
 	return &dto.RegistryLoginOutput{
 		Body: dto.RegistryLoginResponse{
@@ -37,9 +43,14 @@ func (h *RegistryHandler) Login(ctx context.Context, input *dto.RegistryLoginInp
 }
 
 func (h *RegistryHandler) Logout(ctx context.Context, input *dto.RegistryLogoutInput) (*dto.RegistryLogoutOutput, error) {
+	logger.Info("Registry logout", logger.String("server", input.Body.ServerAddress))
+
 	if err := h.service.Logout(ctx, input.Body.ServerAddress); err != nil {
+		logger.Error("Registry logout failed", logger.String("server", input.Body.ServerAddress), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Registry logout successful", logger.String("server", input.Body.ServerAddress))
 
 	return &dto.RegistryLogoutOutput{
 		Body: dto.StatusResponse{Status: "logged out"},
@@ -47,10 +58,15 @@ func (h *RegistryHandler) Logout(ctx context.Context, input *dto.RegistryLogoutI
 }
 
 func (h *RegistryHandler) GetProxy(ctx context.Context, input *dto.ProxyGetInput) (*dto.ProxyGetOutput, error) {
+	logger.Debug("Fetching proxy configuration")
+
 	config, err := h.service.GetProxyConfig(ctx)
 	if err != nil {
+		logger.Error("Failed to fetch proxy configuration", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Proxy configuration fetched")
 
 	return &dto.ProxyGetOutput{
 		Body: dto.ProxyConfigResponse{
@@ -63,6 +79,8 @@ func (h *RegistryHandler) GetProxy(ctx context.Context, input *dto.ProxyGetInput
 }
 
 func (h *RegistryHandler) SetProxy(ctx context.Context, input *dto.ProxySetInput) (*dto.ProxySetOutput, error) {
+	logger.Info("Setting proxy configuration")
+
 	// Get current config first
 	current, err := h.service.GetProxyConfig(ctx)
 	if err != nil {
@@ -84,8 +102,11 @@ func (h *RegistryHandler) SetProxy(ctx context.Context, input *dto.ProxySetInput
 	}
 
 	if err := h.service.SetProxyConfig(ctx, *current); err != nil {
+		logger.Error("Failed to set proxy configuration", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Proxy configuration updated")
 
 	return &dto.ProxySetOutput{
 		Body: dto.StatusResponse{Status: "proxy configured"},
@@ -93,9 +114,12 @@ func (h *RegistryHandler) SetProxy(ctx context.Context, input *dto.ProxySetInput
 }
 
 func (h *RegistryHandler) GetSettings(ctx context.Context, input *dto.SettingsInfoInput) (*dto.SettingsInfoOutput, error) {
+	logger.Debug("Fetching settings")
+
 	// Get registries
 	registries, err := h.service.ListRegistries(ctx)
 	if err != nil {
+		logger.Warn("Failed to list registries", logger.Err(err))
 		registries = []entity.RegistryInfo{}
 	}
 

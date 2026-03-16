@@ -14,6 +14,7 @@ import (
 	"app/example/internal/application/service"
 	"app/example/internal/domain/entity"
 	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/logger"
 )
 
 type ImageHandler struct {
@@ -25,10 +26,15 @@ func NewImageHandler(service *service.ImageService) *ImageHandler {
 }
 
 func (h *ImageHandler) List(ctx context.Context, input *dto.ImageListInput) (*dto.ImageListOutput, error) {
+	logger.Info("Listing images", logger.Bool("all", input.All))
+
 	images, err := h.service.List(ctx, input.All, input.Filters)
 	if err != nil {
+		logger.Error("Failed to list images", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Listed images successfully", logger.Int("count", len(images)))
 
 	response := make([]dto.ImageSummaryResponse, len(images))
 	for i, img := range images {
@@ -46,14 +52,19 @@ func (h *ImageHandler) List(ctx context.Context, input *dto.ImageListInput) (*dt
 }
 
 func (h *ImageHandler) Inspect(ctx context.Context, input *dto.ImageInspectInput) (*dto.ImageInspectOutput, error) {
+	logger.Info("Inspecting image", logger.String("image_id", input.ID))
+
 	imageID, _ := url.QueryUnescape(input.ID)
 	if imageID == "" {
 		imageID = input.ID
 	}
 	image, err := h.service.Inspect(ctx, imageID)
 	if err != nil {
+		logger.Error("Failed to inspect image", logger.String("image_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Image inspected successfully", logger.String("image_id", input.ID))
 
 	return &dto.ImageInspectOutput{
 		Body: dto.ImageInspectResponse{
@@ -82,6 +93,8 @@ func (h *ImageHandler) Inspect(ctx context.Context, input *dto.ImageInspectInput
 }
 
 func (h *ImageHandler) Pull(ctx context.Context, input *dto.ImagePullInput) (*dto.ImagePullOutput, error) {
+	logger.Info("Pulling image", logger.String("image", input.Body.Image))
+
 	opts := entity.ImagePullOptions{}
 	if input.Body.Tag != nil {
 		opts.Tag = *input.Body.Tag
@@ -91,8 +104,11 @@ func (h *ImageHandler) Pull(ctx context.Context, input *dto.ImagePullInput) (*dt
 	}
 
 	if err := h.service.Pull(ctx, input.Body.Image, opts); err != nil {
+		logger.Error("Failed to pull image", logger.String("image", input.Body.Image), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Image pulled successfully", logger.String("image", input.Body.Image))
 
 	return &dto.ImagePullOutput{
 		Body: struct {
@@ -102,6 +118,8 @@ func (h *ImageHandler) Pull(ctx context.Context, input *dto.ImagePullInput) (*dt
 }
 
 func (h *ImageHandler) Remove(ctx context.Context, input *dto.ImageRemoveInput) (*dto.ImageRemoveOutput, error) {
+	logger.Info("Removing image", logger.String("image_id", input.ID), logger.Bool("force", input.Force))
+
 	// URL decode the image ID to handle encoded characters like %3A for :
 	imageID, _ := url.QueryUnescape(input.ID)
 	if imageID == "" {
@@ -109,6 +127,7 @@ func (h *ImageHandler) Remove(ctx context.Context, input *dto.ImageRemoveInput) 
 	}
 	deleted, untagged, err := h.service.Remove(ctx, imageID, input.Force, input.PruneChildren)
 	if err != nil {
+		logger.Error("Failed to remove image", logger.String("image_id", input.ID), logger.Err(err))
 		errMsg := err.Error()
 		// Check for common Docker error patterns
 		if strings.Contains(errMsg, "image is being used by") || strings.Contains(errMsg, "is using") {
@@ -123,6 +142,8 @@ func (h *ImageHandler) Remove(ctx context.Context, input *dto.ImageRemoveInput) 
 		return nil, huma.Error500InternalServerError(errMsg)
 	}
 
+	logger.Info("Image removed successfully", logger.String("image_id", input.ID), logger.Any("deleted", deleted), logger.Any("untagged", untagged))
+
 	return &dto.ImageRemoveOutput{
 		Body: dto.ImageRemoveResponse{
 			Deleted:  deleted,
@@ -132,25 +153,35 @@ func (h *ImageHandler) Remove(ctx context.Context, input *dto.ImageRemoveInput) 
 }
 
 func (h *ImageHandler) Tag(ctx context.Context, input *dto.ImageTagInput) (*dto.ImageTagOutput, error) {
+	logger.Info("Tagging image", logger.String("image_id", input.ID), logger.String("repo", input.Body.Repo), logger.String("tag", input.Body.Tag))
+
 	imageID, _ := url.QueryUnescape(input.ID)
 	if imageID == "" {
 		imageID = input.ID
 	}
 	if err := h.service.Tag(ctx, imageID, input.Body.Repo, input.Body.Tag); err != nil {
+		logger.Error("Failed to tag image", logger.String("image_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Image tagged successfully", logger.String("image_id", input.ID))
 	return &dto.ImageTagOutput{}, nil
 }
 
 func (h *ImageHandler) History(ctx context.Context, input *dto.ImageHistoryInput) (*dto.ImageHistoryOutput, error) {
+	logger.Debug("Fetching image history", logger.String("image_id", input.ID))
+
 	imageID, _ := url.QueryUnescape(input.ID)
 	if imageID == "" {
 		imageID = input.ID
 	}
 	history, err := h.service.History(ctx, imageID)
 	if err != nil {
+		logger.Error("Failed to fetch image history", logger.String("image_id", input.ID), logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Image history fetched", logger.String("image_id", input.ID), logger.Int("layers", len(history)))
 
 	response := make([]dto.ImageHistoryItem, len(history))
 	for i, h := range history {

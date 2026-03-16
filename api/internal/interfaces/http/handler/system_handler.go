@@ -1,10 +1,11 @@
 package handler
 
 import (
-"context"
+	"context"
 
-"app/example/internal/application/service"
-"app/example/internal/interfaces/http/dto"
+	"app/example/internal/application/service"
+	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/logger"
 )
 
 type SystemHandler struct {
@@ -16,10 +17,15 @@ func NewSystemHandler(service *service.SystemService) *SystemHandler {
 }
 
 func (h *SystemHandler) Info(ctx context.Context, input *dto.SystemInfoInput) (*dto.SystemInfoOutput, error) {
+	logger.Debug("Fetching system info")
+
 	info, err := h.service.Info(ctx)
 	if err != nil {
+		logger.Error("Failed to fetch system info", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("System info fetched", logger.Int("containers", info.Containers), logger.Int("images", info.Images))
 
 	return &dto.SystemInfoOutput{
 		Body: dto.SystemInfoResponse{
@@ -46,10 +52,15 @@ func (h *SystemHandler) Info(ctx context.Context, input *dto.SystemInfoInput) (*
 }
 
 func (h *SystemHandler) Version(ctx context.Context, input *dto.SystemVersionInput) (*dto.SystemVersionOutput, error) {
+	logger.Debug("Fetching Docker version")
+
 	version, err := h.service.Version(ctx)
 	if err != nil {
+		logger.Error("Failed to fetch Docker version", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Docker version fetched", logger.String("version", version.Version))
 
 	return &dto.SystemVersionOutput{
 		Body: dto.VersionResponse{
@@ -67,10 +78,15 @@ func (h *SystemHandler) Version(ctx context.Context, input *dto.SystemVersionInp
 }
 
 func (h *SystemHandler) DiskUsage(ctx context.Context, input *dto.SystemDiskUsageInput) (*dto.SystemDiskUsageOutput, error) {
+	logger.Info("Fetching system disk usage")
+
 	usage, err := h.service.DiskUsage(ctx)
 	if err != nil {
+		logger.Error("Failed to fetch disk usage", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Info("Disk usage fetched", logger.Int64("layers_size", usage.LayersSize))
 
 	images := make([]dto.ImageDiskUsageResponse, len(usage.Images))
 	for i, img := range usage.Images {
@@ -119,9 +135,14 @@ func (h *SystemHandler) DiskUsage(ctx context.Context, input *dto.SystemDiskUsag
 }
 
 func (h *SystemHandler) Ping(ctx context.Context, input *dto.SystemPingInput) (*dto.SystemPingOutput, error) {
+	logger.Debug("Health check ping")
+
 	if err := h.service.Ping(ctx); err != nil {
+		logger.Error("Health check failed", logger.Err(err))
 		return nil, err
 	}
+
+	logger.Debug("Health check passed")
 
 	return &dto.SystemPingOutput{
 		Body: struct {
