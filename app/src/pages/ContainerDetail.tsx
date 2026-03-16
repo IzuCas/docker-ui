@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Play,
@@ -18,11 +18,20 @@ import {
 } from 'lucide-react';
 import { containerApi } from '../services/api';
 import { useContainerStats, useContainerLogs } from '../hooks/useWebSocket';
-import type { Container, ContainerStats, ExecResult } from '../types';
+import type { Container, ContainerStats } from '../types';
 
 interface EnvVariable {
   key: string;
   value: string;
+}
+
+interface TerminalEntry {
+  id: number;
+  command: string;
+  output: string;
+  exitCode: number;
+  timestamp: Date;
+  directory: string;
 }
 
 export default function ContainerDetailPage() {
@@ -33,10 +42,17 @@ export default function ContainerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [execCommand, setExecCommand] = useState('');
-  const [execResult, setExecResult] = useState<ExecResult | null>(null);
   const [execLoading, setExecLoading] = useState(false);
   const [useRealtimeStats, setUseRealtimeStats] = useState(true);
   const [useRealtimeLogs, setUseRealtimeLogs] = useState(true);
+  
+  // Terminal state
+  const [terminalHistory, setTerminalHistory] = useState<TerminalEntry[]>([]);
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [currentDir, setCurrentDir] = useState('/');
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // Environment editing state
   const [isEditingEnv, setIsEditingEnv] = useState(false);
@@ -166,22 +182,138 @@ export default function ContainerDetailPage() {
 
   const handleExec = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id || !execCommand) return;
+    if (!id || !execCommand.trim()) return;
+    
+    const cmd = execCommand.trim();
+    
+    // Add to command history (avoid duplicates at the end)
+    if (commandHistory[commandHistory.length - 1] !== cmd) {
+      setCommandHistory(prev => [...prev, cmd]);
+    }
+    setHistoryIndex(-1);
+    
     try {
       setExecLoading(true);
-      const result = await containerApi.exec(id, {
-        cmd: execCommand.split(' '),
-        tty: true,
-      });
-      setExecResult(result);
+      
+      // Check if it's a cd command
+      const cdMatch = cmd.match(/^cd\s+(.+)$/);
+      
+      if (cdMatch) {
+        // Handle cd command - change directory and get the new pwd
+        const targetDir = cdMatch[1].trim();
+        const cdCommand = `cd ${currentDir} && cd ${targetDir} && pwd`;
+        
+        const result = await containerApi.exec(id, {
+          cmd: ['sh', '-c', cdCommand],
+          tty: true,
+        });
+        
+        const newDir = cleanOutput(result.output).trim();
+        
+        if (result.exitCode === 0 && newDir) {
+          const entry: TerminalEntry = {
+            id: Date.now(),
+            command: cmd,
+            output: '',
+            exitCode: 0,
+            timestamp: new Date(),
+            directory: currentDir,
+          };
+          setTerminalHistory(prev => [...prev, entry]);
+          setCurrentDir(newDir);
+        } else {
+          const entry: TerminalEntry = {
+            id: Date.now(),
+            command: cmd,
+            output: result.output || 'Directory not found',
+            exitCode: result.exitCode,
+            timestamp: new Date(),
+            directory: currentDir,
+          };
+          setTerminalHistory(prev => [...prev, entry]);
+        }
+      } else {
+        // Regular command - execute in current directory
+        const fullCommand = `cd ${currentDir} && ${cmd}`;
+        
+        const result = await containerApi.exec(id, {
+          cmd: ['sh', '-c', fullCommand],
+          tty: true,
+        });
+        
+        // Add to terminal history
+        const entry: TerminalEntry = {
+          id: Date.now(),
+          command: cmd,
+          output: result.output,
+          exitCode: result.exitCode,
+          timestamp: new Date(),
+          directory: currentDir,
+        };
+        setTerminalHistory(prev => [...prev, entry]);
+      }
     } catch (err) {
-      setExecResult({
+      const errorOutput = err instanceof Error ? err.message : 'Command failed';
+      const entry: TerminalEntry = {
+        id: Date.now(),
+        command: cmd,
+        output: errorOutput,
         exitCode: -1,
-        output: err instanceof Error ? err.message : 'Command failed',
-      });
+        timestamp: new Date(),
+        directory: currentDir,
+      };
+      setTerminalHistory(prev => [...prev, entry]);
     } finally {
       setExecLoading(false);
+      setExecCommand('');
+      // Scroll to bottom and refocus input
+      setTimeout(() => {
+        if (terminalRef.current) {
+          terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+        }
+        inputRef.current?.focus();
+      }, 100);
     }
+  };
+
+  const handleTerminalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+      
+      const newIndex = historyIndex === -1 
+        ? commandHistory.length - 1 
+        : Math.max(0, historyIndex - 1);
+      
+      setHistoryIndex(newIndex);
+      setExecCommand(commandHistory[newIndex]);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      
+      const newIndex = historyIndex + 1;
+      if (newIndex >= commandHistory.length) {
+        setHistoryIndex(-1);
+        setExecCommand('');
+      } else {
+        setHistoryIndex(newIndex);
+        setExecCommand(commandHistory[newIndex]);
+      }
+    }
+  };
+
+  const clearTerminal = () => {
+    setTerminalHistory([]);
+    setCurrentDir('/');
+  };
+
+  // Clean terminal output (remove control characters)
+  const cleanOutput = (output: string) => {
+    // Remove Docker multiplexed stream headers and control characters
+    return output
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
   };
 
   const formatBytes = (bytes: number) => {
@@ -493,38 +625,141 @@ export default function ContainerDetailPage() {
 
       {activeTab === 'exec' && (
         <div className="card">
-          <div className="card-body">
+          <div className="card-body" style={{ padding: 0 }}>
             {!container.state.running ? (
-              <div style={{ color: 'var(--text-secondary)' }}>
+              <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
                 Container must be running to execute commands
               </div>
             ) : (
-              <>
-                <form onSubmit={handleExec} style={{ marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '500px' }}>
+                {/* Terminal header */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '0.5rem 1rem',
+                  borderBottom: '1px solid var(--border-color)',
+                  background: 'var(--bg-secondary)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Terminal size={16} />
+                    <span style={{ fontWeight: 500 }}>Terminal</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {container.name.replace(/^\//, '')}
+                    </span>
+                  </div>
+                  <button 
+                    className="btn btn-sm" 
+                    onClick={clearTerminal}
+                    title="Clear terminal"
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                
+                {/* Terminal output area */}
+                <div 
+                  ref={terminalRef}
+                  onClick={() => inputRef.current?.focus()}
+                  style={{ 
+                    flex: 1, 
+                    overflow: 'auto', 
+                    padding: '1rem',
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    background: '#0d1117',
+                    color: '#c9d1d9',
+                    cursor: 'text'
+                  }}
+                >
+                  {/* Welcome message */}
+                  {terminalHistory.length === 0 && (
+                    <div style={{ color: '#8b949e', marginBottom: '1rem' }}>
+                      <div>Welcome to container terminal.</div>
+                      <div>Type commands and press Enter to execute.</div>
+                      <div>Use ↑/↓ arrows to navigate command history.</div>
+                    </div>
+                  )}
+                  
+                  {/* Command history */}
+                  {terminalHistory.map((entry) => (
+                    <div key={entry.id} style={{ marginBottom: '0.75rem' }}>
+                      {/* Command prompt */}
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <span style={{ color: '#8b949e' }}>{entry.directory}</span>
+                        <span style={{ color: '#58a6ff' }}>$</span>
+                        <span style={{ color: '#c9d1d9' }}>{entry.command}</span>
+                      </div>
+                      {/* Output */}
+                      {entry.output && (
+                        <pre style={{ 
+                          margin: '0.25rem 0 0 1rem', 
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          color: entry.exitCode === 0 ? '#c9d1d9' : '#f85149'
+                        }}>
+                          {cleanOutput(entry.output)}
+                        </pre>
+                      )}
+                      {/* Exit code if non-zero */}
+                      {entry.exitCode !== 0 && (
+                        <div style={{ 
+                          marginTop: '0.25rem', 
+                          marginLeft: '1rem',
+                          fontSize: '0.75rem', 
+                          color: '#f85149' 
+                        }}>
+                          exit code: {entry.exitCode}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Current input line */}
+                  <form onSubmit={handleExec} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#8b949e' }}>{currentDir}</span>
+                    <span style={{ color: '#58a6ff' }}>$</span>
                     <input
+                      ref={inputRef}
                       type="text"
-                      className="form-input"
                       value={execCommand}
                       onChange={(e) => setExecCommand(e.target.value)}
-                      placeholder="ls -la /app"
-                      style={{ flex: 1 }}
+                      onKeyDown={handleTerminalKeyDown}
+                      disabled={execLoading}
+                      placeholder={execLoading ? 'Running...' : ''}
+                      autoFocus
+                      style={{ 
+                        flex: 1,
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: '#c9d1d9',
+                        fontFamily: 'inherit',
+                        fontSize: 'inherit',
+                        padding: 0
+                      }}
                     />
-                    <button type="submit" className="btn btn-primary" disabled={execLoading}>
-                      <Terminal size={16} />
-                      {execLoading ? 'Running...' : 'Run'}
-                    </button>
-                  </div>
-                </form>
-                {execResult && (
-                  <div>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                      Exit code: <span className="code">{execResult.exitCode}</span>
-                    </div>
-                    <div className="logs-container">{execResult.output || '(no output)'}</div>
-                  </div>
-                )}
-              </>
+                    {execLoading && (
+                      <div className="spinner" style={{ width: '14px', height: '14px' }} />
+                    )}
+                  </form>
+                </div>
+                
+                {/* Status bar */}
+                <div style={{ 
+                  padding: '0.25rem 1rem',
+                  borderTop: '1px solid var(--border-color)',
+                  background: 'var(--bg-secondary)',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <span>History: {commandHistory.length} commands</span>
+                  <span>↑↓ Navigate history | Enter to run</span>
+                </div>
+              </div>
             )}
           </div>
         </div>

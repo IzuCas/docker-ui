@@ -183,11 +183,11 @@ type ContainerExecInput struct {
 
 type ExecRequest struct {
 	Cmd        []string `json:"cmd" required:"true"`
-	Env        []string `json:"env"`
-	WorkingDir string   `json:"workingDir"`
-	User       string   `json:"user"`
-	Privileged bool     `json:"privileged"`
-	Tty        bool     `json:"tty"`
+	Env        []string `json:"env,omitempty" required:"false"`
+	WorkingDir string   `json:"workingDir,omitempty" required:"false"`
+	User       string   `json:"user,omitempty" required:"false"`
+	Privileged bool     `json:"privileged,omitempty" required:"false"`
+	Tty        bool     `json:"tty,omitempty" required:"false"`
 }
 
 type ContainerExecOutput struct {
