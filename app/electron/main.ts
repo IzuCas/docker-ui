@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, Menu } from 'electron';
+import { app, BrowserWindow, shell, Menu, screen } from 'electron';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -113,13 +113,22 @@ function stopApiServer(): void {
 }
 
 function createWindow(): void {
+  // Get primary display dimensions
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  
+  // Calculate window size (85% of screen size)
+  const windowWidth = Math.min(Math.floor(screenWidth * 0.85), 1400);
+  const windowHeight = Math.min(Math.floor(screenHeight * 0.85), 900);
+  
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 768,
+    width: windowWidth,
+    height: windowHeight,
+    minWidth: 800,
+    minHeight: 600,
     title: 'Docker Manager',
     icon: path.join(__dirname, '../public/icon.png'),
+    center: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

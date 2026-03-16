@@ -18,7 +18,7 @@
     "build:electron": "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
     "preview": "vite preview",
     "electron": "npm run build:electron && electron .",
-    "electron:dev": "NODE_ENV=development npm run electron",
+    "electron:dev": "npm run build:electron && SKIP_API=true concurrently \"vite\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "npm run build:prod && npm run build:electron && electron-builder",
     "electron:build:linux": "npm run build:prod && npm run build:electron && electron-builder --linux",
     "electron:build:win": "npm run build:prod && npm run build:electron && electron-builder --win",
