@@ -1,7 +1,10 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
 
 	"app/example/internal/interfaces/http/handler"
 )
@@ -13,6 +16,7 @@ type Router struct {
 	networkHandler   *handler.NetworkHandler
 	systemHandler    *handler.SystemHandler
 	registryHandler  *handler.RegistryHandler
+	wsHandler        *handler.WebSocketHandler
 }
 
 func NewRouter(
@@ -22,6 +26,7 @@ func NewRouter(
 	networkHandler *handler.NetworkHandler,
 	systemHandler *handler.SystemHandler,
 	registryHandler *handler.RegistryHandler,
+	wsHandler *handler.WebSocketHandler,
 ) *Router {
 	return &Router{
 		containerHandler: containerHandler,
@@ -30,6 +35,7 @@ func NewRouter(
 		networkHandler:   networkHandler,
 		systemHandler:    systemHandler,
 		registryHandler:  registryHandler,
+		wsHandler:        wsHandler,
 	}
 }
 
@@ -40,6 +46,21 @@ func (r *Router) RegisterRoutes(api huma.API) {
 	r.registerNetworkRoutes(api)
 	r.registerSystemRoutes(api)
 	r.registerRegistryRoutes(api)
+}
+
+// RegisterWebSocketRoutes registers WebSocket routes directly on chi router
+func (r *Router) RegisterWebSocketRoutes(mux *chi.Mux) {
+	mux.HandleFunc("/ws/events", r.wsHandler.ContainerEvents)
+	mux.HandleFunc("/ws/containers", r.wsHandler.ContainersList)
+	mux.HandleFunc("/ws/containers/stats", r.wsHandler.ContainerStats)
+	mux.HandleFunc("/ws/containers/logs", r.wsHandler.ContainerLogs)
+	mux.HandleFunc("/ws/system", r.wsHandler.SystemInfo)
+}
+
+// HealthCheck is a simple health check endpoint
+func HealthCheck(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func (r *Router) registerContainerRoutes(api huma.API) {

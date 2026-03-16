@@ -12,39 +12,69 @@ import {
   MoreHorizontal,
   Pause,
   X,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
+import { useContainersWebSocket } from '../hooks/useWebSocket';
 import type { ContainerSummary, ContainerCreateConfig } from '../types';
 
 export default function ContainersPage() {
-  const [containers, setContainers] = useState<ContainerSummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [useRealtime, setUseRealtime] = useState(true);
+
+  // WebSocket for real-time updates
+  const { 
+    containers: wsContainers, 
+    connected: wsConnected, 
+    refresh: wsRefresh,
+    lastEvent 
+  } = useContainersWebSocket(useRealtime);
+
+  // Fallback to HTTP polling when WebSocket is disabled
+  const [httpContainers, setHttpContainers] = useState<ContainerSummary[]>([]);
+  const [loading, setLoading] = useState(!useRealtime);
+
+  const containers = useRealtime ? wsContainers : httpContainers;
 
   const loadContainers = useCallback(async () => {
+    if (useRealtime) {
+      wsRefresh();
+      return;
+    }
     try {
       setLoading(true);
       const data = await containerApi.list(showAll);
-      setContainers(data);
+      setHttpContainers(data);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load containers');
     } finally {
       setLoading(false);
     }
-  }, [showAll]);
+  }, [showAll, useRealtime, wsRefresh]);
 
   useEffect(() => {
-    loadContainers();
-  }, [loadContainers]);
+    if (!useRealtime) {
+      loadContainers();
+    }
+  }, [loadContainers, useRealtime]);
+
+  // Show notification when events occur
+  useEffect(() => {
+    if (lastEvent) {
+      console.log('[Container Event]', lastEvent.action, lastEvent.actor.attributes?.name || lastEvent.actor.id);
+    }
+  }, [lastEvent]);
 
   const handleStart = async (id: string) => {
     try {
       await containerApi.start(id);
-      await loadContainers();
+      // WebSocket will automatically update the list
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start container');
     }
@@ -53,7 +83,7 @@ export default function ContainersPage() {
   const handleStop = async (id: string) => {
     try {
       await containerApi.stop(id);
-      await loadContainers();
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to stop container');
     }
@@ -62,7 +92,7 @@ export default function ContainersPage() {
   const handleRestart = async (id: string) => {
     try {
       await containerApi.restart(id);
-      await loadContainers();
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to restart container');
     }
@@ -71,7 +101,7 @@ export default function ContainersPage() {
   const handlePause = async (id: string) => {
     try {
       await containerApi.pause(id);
-      await loadContainers();
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause container');
     }
@@ -80,7 +110,7 @@ export default function ContainersPage() {
   const handleUnpause = async (id: string) => {
     try {
       await containerApi.unpause(id);
-      await loadContainers();
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to unpause container');
     }
@@ -90,7 +120,7 @@ export default function ContainersPage() {
     if (!confirm('Are you sure you want to remove this container?')) return;
     try {
       await containerApi.remove(id, true);
-      await loadContainers();
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove container');
     }
@@ -100,7 +130,7 @@ export default function ContainersPage() {
     if (!confirm('Remove all stopped containers?')) return;
     try {
       await containerApi.prune();
-      await loadContainers();
+      if (!useRealtime) await loadContainers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to prune containers');
     }
@@ -119,17 +149,39 @@ export default function ContainersPage() {
     return badges[state] || 'bg-bg-tertiary text-text-secondary';
   };
 
-  const formatName = (names: string[]) => {
+  const formatName = (names?: string[]) => {
+    if (!names || names.length === 0) return 'unnamed';
     return names[0]?.replace(/^\//, '') || 'unnamed';
   };
 
-  const formatId = (id: string) => id.slice(0, 12);
+  const formatId = (id?: string) => id?.slice(0, 12) || '';
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-text-primary">Containers</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-text-primary">Containers</h1>
+          {useRealtime && (
+            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+              wsConnected 
+                ? 'bg-accent-green/20 text-accent-green' 
+                : 'bg-accent-yellow/20 text-accent-yellow'
+            }`}>
+              {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {wsConnected ? 'Live' : 'Connecting...'}
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useRealtime}
+              onChange={(e) => setUseRealtime(e.target.checked)}
+              className="w-4 h-4 rounded border-border bg-bg-tertiary text-accent-blue focus:ring-accent-blue focus:ring-offset-bg-primary"
+            />
+            Real-time
+          </label>
           <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
             <input
               type="checkbox"
@@ -176,10 +228,15 @@ export default function ContainersPage() {
       )}
 
       <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden shadow-lg">
-        {loading ? (
+        {loading && !useRealtime ? (
           <div className="flex items-center justify-center py-12 text-text-secondary">
             <div className="w-6 h-6 border-2 border-border border-t-accent-blue rounded-full animate-spin mr-3" />
             Loading containers...
+          </div>
+        ) : useRealtime && !wsConnected && containers.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-text-secondary">
+            <div className="w-6 h-6 border-2 border-border border-t-accent-blue rounded-full animate-spin mr-3" />
+            Connecting to real-time updates...
           </div>
         ) : containers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
@@ -200,8 +257,8 @@ export default function ContainersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-              {containers.map((container) => (
-                <tr key={container.id} className="hover:bg-bg-tertiary/50 transition-colors">
+              {containers.map((container, index) => (
+                <tr key={container.id || `container-${index}`} className="hover:bg-bg-tertiary/50 transition-colors">
                   <td className="px-4 py-3">
                     <Link to={`/containers/${container.id}`} className="font-medium text-accent-blue hover:underline">
                       {formatName(container.names)}

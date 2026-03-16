@@ -47,6 +47,7 @@ func main() {
 	networkHandler := handler.NewNetworkHandler(networkService)
 	systemHandler := handler.NewSystemHandler(systemService)
 	registryHandler := handler.NewRegistryHandler(registryService)
+	wsHandler := handler.NewWebSocketHandler(containerService, systemService)
 
 	// Initialize router
 	router := httpRouter.NewRouter(
@@ -56,6 +57,7 @@ func main() {
 		networkHandler,
 		systemHandler,
 		registryHandler,
+		wsHandler,
 	)
 
 	// Create Chi router
@@ -73,6 +75,9 @@ func main() {
 		MaxAge:           300,
 	}))
 
+	// Register WebSocket routes (before Huma API to avoid conflicts)
+	router.RegisterWebSocketRoutes(r)
+
 	// Create Huma API with OpenAPI documentation
 	api := humachi.New(r, huma.DefaultConfig("Docker Management API", "1.0.0"))
 
@@ -82,6 +87,12 @@ func main() {
 	// Start server
 	fmt.Println("Starting Docker Management API server on :8001")
 	fmt.Println("API Documentation available at http://localhost:8001/docs")
+	fmt.Println("WebSocket endpoints:")
+	fmt.Println("  - ws://localhost:8001/ws/events       (Docker events stream)")
+	fmt.Println("  - ws://localhost:8001/ws/containers   (Container list with real-time updates)")
+	fmt.Println("  - ws://localhost:8001/ws/containers/stats?id=<container_id>  (Container stats stream)")
+	fmt.Println("  - ws://localhost:8001/ws/containers/logs?id=<container_id>   (Container logs stream)")
+	fmt.Println("  - ws://localhost:8001/ws/system       (System info stream)")
 	if err := http.ListenAndServe(":8001", r); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

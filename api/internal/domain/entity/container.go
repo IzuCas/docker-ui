@@ -65,16 +65,16 @@ type Container struct {
 
 // ContainerSummary represents a summary of a container (for listing)
 type ContainerSummary struct {
-	ID      string
-	Names   []string
-	Image   string
-	ImageID string
-	Command string
-	Created time.Time
-	State   string
-	Status  string
-	Ports   []PortMapping
-	Labels  map[string]string
+	ID      string            `json:"id"`
+	Names   []string          `json:"names"`
+	Image   string            `json:"image"`
+	ImageID string            `json:"imageId"`
+	Command string            `json:"command"`
+	Created time.Time         `json:"created"`
+	State   string            `json:"state"`
+	Status  string            `json:"status"`
+	Ports   []PortMapping     `json:"ports,omitempty"`
+	Labels  map[string]string `json:"labels,omitempty"`
 }
 
 // ContainerCreateConfig represents configuration for creating a container
@@ -129,21 +129,21 @@ type ExecConfig struct {
 
 // ExecResult represents exec result
 type ExecResult struct {
-	ExitCode int
-	Output   string
+	ExitCode int    `json:"exitCode"`
+	Output   string `json:"output"`
 }
 
 // ContainerStats represents container statistics
 type ContainerStats struct {
-	CPUPercent    float64
-	MemoryUsage   int64
-	MemoryLimit   int64
-	MemoryPercent float64
-	NetworkRx     int64
-	NetworkTx     int64
-	BlockRead     int64
-	BlockWrite    int64
-	PIDs          int64
+	CPUPercent    float64 `json:"cpuPercent"`
+	MemoryUsage   int64   `json:"memoryUsage"`
+	MemoryLimit   int64   `json:"memoryLimit"`
+	MemoryPercent float64 `json:"memoryPercent"`
+	NetworkRx     int64   `json:"networkRx"`
+	NetworkTx     int64   `json:"networkTx"`
+	BlockRead     int64   `json:"blockRead"`
+	BlockWrite    int64   `json:"blockWrite"`
+	PIDs          int64   `json:"pids"`
 }
 
 // Resources represents container resource configuration
@@ -168,4 +168,26 @@ type PathStat struct {
 	Mode       uint32
 	ModTime    time.Time
 	LinkTarget string
+}
+
+// DockerEvent represents a Docker event
+type DockerEvent struct {
+	Type     string     `json:"type"`
+	Action   string     `json:"action"`
+	Actor    EventActor `json:"actor"`
+	Time     int64      `json:"time"`
+	TimeNano int64      `json:"timeNano"`
+}
+
+// EventActor represents the actor of an event
+type EventActor struct {
+	ID         string            `json:"id"`
+	Attributes map[string]string `json:"attributes"`
+}
+
+// LogEntry represents a log entry
+type LogEntry struct {
+	Timestamp string `json:"timestamp"`
+	Stream    string `json:"stream"`
+	Message   string `json:"message"`
 }

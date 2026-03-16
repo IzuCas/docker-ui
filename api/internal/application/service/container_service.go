@@ -1,10 +1,10 @@
 package service
 
 import (
-"context"
+	"context"
 
-"app/example/internal/domain/client"
-"app/example/internal/domain/entity"
+	"app/example/internal/domain/client"
+	"app/example/internal/domain/entity"
 )
 
 type ContainerService struct {
@@ -73,4 +73,18 @@ func (s *ContainerService) Exec(ctx context.Context, id string, config entity.Ex
 
 func (s *ContainerService) Top(ctx context.Context, id string, psArgs string) ([]string, [][]string, error) {
 	return s.client.Top(ctx, id, psArgs)
+}
+
+// Streaming methods
+
+func (s *ContainerService) StreamEvents(ctx context.Context) (<-chan entity.DockerEvent, <-chan error) {
+	return s.client.StreamEvents(ctx)
+}
+
+func (s *ContainerService) StreamStats(ctx context.Context, id string) (<-chan *entity.ContainerStats, <-chan error) {
+	return s.client.StreamStats(ctx, id)
+}
+
+func (s *ContainerService) StreamLogs(ctx context.Context, id string, tail string) (<-chan entity.LogEntry, <-chan error) {
+	return s.client.StreamLogs(ctx, id, tail)
 }

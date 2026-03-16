@@ -25,6 +25,10 @@ type ContainerClient interface {
 	Stats(ctx context.Context, id string) (*entity.ContainerStats, error)
 	Exec(ctx context.Context, id string, config entity.ExecConfig) (*entity.ExecResult, error)
 	Top(ctx context.Context, id string, psArgs string) ([]string, [][]string, error)
+	// Streaming methods
+	StreamEvents(ctx context.Context) (<-chan entity.DockerEvent, <-chan error)
+	StreamStats(ctx context.Context, id string) (<-chan *entity.ContainerStats, <-chan error)
+	StreamLogs(ctx context.Context, id string, tail string) (<-chan entity.LogEntry, <-chan error)
 }
 
 // ImageClient defines the interface for image operations

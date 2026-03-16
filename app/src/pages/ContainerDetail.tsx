@@ -8,22 +8,53 @@ import {
   ArrowLeft,
   Terminal,
   RefreshCw,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
+import { useContainerStats, useContainerLogs } from '../hooks/useWebSocket';
 import type { Container, ContainerStats, ExecResult } from '../types';
 
 export default function ContainerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [container, setContainer] = useState<Container | null>(null);
-  const [stats, setStats] = useState<ContainerStats | null>(null);
-  const [logs, setLogs] = useState<string>('');
   const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [execCommand, setExecCommand] = useState('');
   const [execResult, setExecResult] = useState<ExecResult | null>(null);
   const [execLoading, setExecLoading] = useState(false);
+  const [useRealtimeStats, setUseRealtimeStats] = useState(true);
+  const [useRealtimeLogs, setUseRealtimeLogs] = useState(true);
+
+  // Real-time stats via WebSocket
+  const { 
+    stats: wsStats, 
+    connected: statsConnected 
+  } = useContainerStats(
+    container?.state.running ? id || null : null,
+    useRealtimeStats
+  );
+
+  // Real-time logs via WebSocket
+  const {
+    logs: wsLogs,
+    connected: logsConnected,
+    clearLogs,
+  } = useContainerLogs(
+    activeTab === 'logs' ? id || null : null,
+    { tail: '500', enabled: useRealtimeLogs }
+  );
+
+  // Fallback HTTP stats
+  const [httpStats, setHttpStats] = useState<ContainerStats | null>(null);
+  const [httpLogs, setHttpLogs] = useState<string>('');
+
+  const stats = useRealtimeStats ? wsStats : httpStats;
+  const logs = useRealtimeLogs 
+    ? wsLogs.map(l => `${l.timestamp} [${l.stream}] ${l.message}`).join('\n')
+    : httpLogs;
 
   useEffect(() => {
     if (!id) return;
@@ -31,12 +62,12 @@ export default function ContainerDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!id || !container?.state.running) return;
+    if (!id || !container?.state.running || useRealtimeStats) return;
     
     const loadStats = async () => {
       try {
         const s = await containerApi.stats(id);
-        setStats(s);
+        setHttpStats(s);
       } catch {
         // Ignore stats errors
       }
@@ -45,7 +76,7 @@ export default function ContainerDetailPage() {
     loadStats();
     const interval = setInterval(loadStats, 5000);
     return () => clearInterval(interval);
-  }, [id, container?.state.running]);
+  }, [id, container?.state.running, useRealtimeStats]);
 
   const loadContainer = async () => {
     if (!id) return;
@@ -65,17 +96,17 @@ export default function ContainerDetailPage() {
     if (!id) return;
     try {
       const result = await containerApi.logs(id, { tail: '500' });
-      setLogs(result.logs);
+      setHttpLogs(result.logs);
     } catch (err) {
-      setLogs('Failed to load logs: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setHttpLogs('Failed to load logs: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'logs' && id) {
+    if (activeTab === 'logs' && id && !useRealtimeLogs) {
       loadLogs();
     }
-  }, [activeTab, id]);
+  }, [activeTab, id, useRealtimeLogs]);
 
   const handleStart = async () => {
     if (!id) return;
@@ -207,31 +238,61 @@ export default function ContainerDetailPage() {
       </div>
 
       {container.state.running && stats && (
-        <div className="stats-grid">
+        <div className="stats-section">
+          <div className="stats-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 600 }}>Resource Usage</span>
+              {useRealtimeStats && (
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  backgroundColor: statsConnected ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+                  color: statsConnected ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                }}>
+                  {statsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                  {statsConnected ? 'Live' : 'Connecting...'}
+                </span>
+              )}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useRealtimeStats}
+                onChange={(e) => setUseRealtimeStats(e.target.checked)}
+              />
+              Real-time
+            </label>
+          </div>
+          <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-label">CPU</div>
-            <div className="stat-value">{stats.cpuPercent.toFixed(2)}%</div>
+            <div className="stat-value">{(stats.cpuPercent ?? 0).toFixed(2)}%</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Memory</div>
             <div className="stat-value">
-              {formatBytes(stats.memoryUsage)} / {formatBytes(stats.memoryLimit)}
+              {formatBytes(stats.memoryUsage ?? 0)} / {formatBytes(stats.memoryLimit ?? 0)}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {stats.memoryPercent.toFixed(2)}%
+              {(stats.memoryPercent ?? 0).toFixed(2)}%
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Network I/O</div>
             <div className="stat-value">
-              {formatBytes(stats.networkRx)} / {formatBytes(stats.networkTx)}
+              {formatBytes(stats.networkRx ?? 0)} / {formatBytes(stats.networkTx ?? 0)}
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Block I/O</div>
             <div className="stat-value">
-              {formatBytes(stats.blockRead)} / {formatBytes(stats.blockWrite)}
+              {formatBytes(stats.blockRead ?? 0)} / {formatBytes(stats.blockWrite ?? 0)}
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -326,11 +387,36 @@ export default function ContainerDetailPage() {
 
       {activeTab === 'logs' && (
         <div>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <button className="btn btn-sm" onClick={loadLogs}>
-              <RefreshCw size={14} />
-              Refresh
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {useRealtimeLogs && (
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  backgroundColor: logsConnected ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+                  color: logsConnected ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                }}>
+                  {logsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                  {logsConnected ? 'Live' : 'Connecting...'}
+                </span>
+              )}
+              <button className="btn btn-sm" onClick={() => useRealtimeLogs ? clearLogs() : loadLogs()}>
+                <RefreshCw size={14} />
+                {useRealtimeLogs ? 'Clear' : 'Refresh'}
+              </button>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useRealtimeLogs}
+                onChange={(e) => setUseRealtimeLogs(e.target.checked)}
+              />
+              Real-time
+            </label>
           </div>
           <div className="logs-container">{logs || 'No logs available'}</div>
         </div>

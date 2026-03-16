@@ -441,3 +441,208 @@ func (c *ContainerClient) InspectChanges(ctx context.Context, id string) ([]cont
 func intToString(i int) string {
 	return strconv.Itoa(i)
 }
+
+// StreamEvents streams Docker events in real-time
+func (c *ContainerClient) StreamEvents(ctx context.Context) (<-chan entity.DockerEvent, <-chan error) {
+	eventsChan := make(chan entity.DockerEvent)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(eventsChan)
+		defer close(errChan)
+
+		events, errs := c.docker.Events(ctx, types.EventsOptions{})
+
+		for {
+			select {
+			case event, ok := <-events:
+				if !ok {
+					return
+				}
+				attributes := make(map[string]string)
+				for k, v := range event.Actor.Attributes {
+					attributes[k] = v
+				}
+				eventsChan <- entity.DockerEvent{
+					Type:   string(event.Type),
+					Action: string(event.Action),
+					Actor: entity.EventActor{
+						ID:         event.Actor.ID,
+						Attributes: attributes,
+					},
+					Time:     event.Time,
+					TimeNano: event.TimeNano,
+				}
+			case err := <-errs:
+				if err != nil {
+					errChan <- err
+				}
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return eventsChan, errChan
+}
+
+// StreamStats streams container stats in real-time
+func (c *ContainerClient) StreamStats(ctx context.Context, id string) (<-chan *entity.ContainerStats, <-chan error) {
+	statsChan := make(chan *entity.ContainerStats)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(statsChan)
+		defer close(errChan)
+
+		resp, err := c.docker.ContainerStats(ctx, id, true) // true for streaming
+		if err != nil {
+			errChan <- err
+			return
+		}
+		defer resp.Body.Close()
+
+		decoder := json.NewDecoder(resp.Body)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				var stats types.StatsJSON
+				if err := decoder.Decode(&stats); err != nil {
+					if err != io.EOF {
+						errChan <- err
+					}
+					return
+				}
+
+				cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
+				systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)
+				cpuPercent := 0.0
+				if systemDelta > 0 && cpuDelta > 0 {
+					cpuPercent = (cpuDelta / systemDelta) * float64(stats.CPUStats.OnlineCPUs) * 100.0
+				}
+
+				memPercent := 0.0
+				if stats.MemoryStats.Limit > 0 {
+					memPercent = float64(stats.MemoryStats.Usage) / float64(stats.MemoryStats.Limit) * 100.0
+				}
+
+				var networkRx, networkTx uint64
+				for _, v := range stats.Networks {
+					networkRx += v.RxBytes
+					networkTx += v.TxBytes
+				}
+
+				var blockRead, blockWrite uint64
+				for _, v := range stats.BlkioStats.IoServiceBytesRecursive {
+					switch v.Op {
+					case "Read":
+						blockRead += v.Value
+					case "Write":
+						blockWrite += v.Value
+					}
+				}
+
+				statsChan <- &entity.ContainerStats{
+					CPUPercent:    cpuPercent,
+					MemoryUsage:   int64(stats.MemoryStats.Usage),
+					MemoryLimit:   int64(stats.MemoryStats.Limit),
+					MemoryPercent: memPercent,
+					NetworkRx:     int64(networkRx),
+					NetworkTx:     int64(networkTx),
+					BlockRead:     int64(blockRead),
+					BlockWrite:    int64(blockWrite),
+					PIDs:          int64(stats.PidsStats.Current),
+				}
+			}
+		}
+	}()
+
+	return statsChan, errChan
+}
+
+// StreamLogs streams container logs in real-time
+func (c *ContainerClient) StreamLogs(ctx context.Context, id string, tail string) (<-chan entity.LogEntry, <-chan error) {
+	logsChan := make(chan entity.LogEntry)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(logsChan)
+		defer close(errChan)
+
+		opts := container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+			Tail:       tail,
+			Timestamps: true,
+		}
+
+		reader, err := c.docker.ContainerLogs(ctx, id, opts)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		defer reader.Close()
+
+		// Docker logs have an 8-byte header before each line
+		// [stream type (1 byte)][0 0 0 (3 bytes)][size (4 bytes big-endian)][payload]
+		header := make([]byte, 8)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// Read header
+				_, err := io.ReadFull(reader, header)
+				if err != nil {
+					if err != io.EOF {
+						errChan <- err
+					}
+					return
+				}
+
+				// Determine stream type
+				stream := "stdout"
+				if header[0] == 2 {
+					stream = "stderr"
+				}
+
+				// Get payload size
+				size := int64(header[4])<<24 | int64(header[5])<<16 | int64(header[6])<<8 | int64(header[7])
+
+				// Read payload
+				payload := make([]byte, size)
+				_, err = io.ReadFull(reader, payload)
+				if err != nil {
+					if err != io.EOF {
+						errChan <- err
+					}
+					return
+				}
+
+				line := string(payload)
+				timestamp := ""
+				message := line
+
+				// Parse timestamp if present (format: 2023-01-15T10:30:45.123456789Z message)
+				if len(line) > 30 && line[29] == 'Z' {
+					timestamp = line[:30]
+					message = line[31:]
+				}
+
+				logsChan <- entity.LogEntry{
+					Timestamp: timestamp,
+					Stream:    stream,
+					Message:   message,
+				}
+			}
+		}
+	}()
+
+	return logsChan, errChan
+}
