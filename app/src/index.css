@@ -35,7 +35,11 @@
   }
 
   .page-title {
-    @apply text-2xl font-semibold;
+    @apply text-2xl font-semibold flex items-center gap-2;
+  }
+
+  .page-actions {
+    @apply flex items-center gap-3;
   }
 
   /* Buttons */

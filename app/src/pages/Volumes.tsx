@@ -70,7 +70,7 @@ export default function VolumesPage() {
         <h1 className="page-title">
           <HardDrive size={24} />
           Volumes
-          <span className="badge badge-secondary" style={{ marginLeft: '0.5rem' }}>
+          <span className="badge badge-secondary">
             {volumes.length}
           </span>
         </h1>

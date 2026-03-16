@@ -67,7 +67,7 @@ export default function NetworksPage() {
         <h1 className="page-title">
           <Network size={24} />
           Networks
-          <span className="badge badge-secondary" style={{ marginLeft: '0.5rem' }}>
+          <span className="badge badge-secondary">
             {networks.length}
           </span>
         </h1>
