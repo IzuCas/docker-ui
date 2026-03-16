@@ -13,6 +13,22 @@ type ContainerState struct {
 	ExitCode   int
 	StartedAt  time.Time
 	FinishedAt time.Time
+	Health     *HealthState
+}
+
+// HealthState represents container health check state
+type HealthState struct {
+	Status        string
+	FailingStreak int
+	Log           []HealthLog
+}
+
+// HealthLog represents a health check log entry
+type HealthLog struct {
+	Start    time.Time
+	End      time.Time
+	ExitCode int
+	Output   string
 }
 
 // PortBinding represents a port binding configuration

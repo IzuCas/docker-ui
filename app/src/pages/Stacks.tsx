@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Box,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
 import type { ContainerSummary } from '../types';
@@ -206,6 +207,14 @@ export default function StacksPage() {
                   </div>
 
                   <div className="action-buttons" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      to={`/stacks/${encodeURIComponent(stack.name)}`}
+                      className="btn btn-sm"
+                      title="View Details"
+                    >
+                      <ExternalLink size={14} />
+                      Details
+                    </Link>
                     <button
                       className="btn-icon"
                       onClick={() => handleStackAction(stack, 'start')}

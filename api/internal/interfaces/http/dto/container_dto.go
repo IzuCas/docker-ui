@@ -52,15 +52,29 @@ type ContainerResponse struct {
 }
 
 type ContainerStateResponse struct {
-	Status     string `json:"status"`
-	Running    bool   `json:"running"`
-	Paused     bool   `json:"paused"`
-	Restarting bool   `json:"restarting"`
-	Dead       bool   `json:"dead"`
-	Pid        int    `json:"pid"`
-	ExitCode   int    `json:"exitCode"`
-	StartedAt  string `json:"startedAt"`
-	FinishedAt string `json:"finishedAt"`
+	Status     string          `json:"status"`
+	Running    bool            `json:"running"`
+	Paused     bool            `json:"paused"`
+	Restarting bool            `json:"restarting"`
+	Dead       bool            `json:"dead"`
+	Pid        int             `json:"pid"`
+	ExitCode   int             `json:"exitCode"`
+	StartedAt  string          `json:"startedAt"`
+	FinishedAt string          `json:"finishedAt"`
+	Health     *HealthResponse `json:"health,omitempty"`
+}
+
+type HealthResponse struct {
+	Status        string              `json:"status"`
+	FailingStreak int                 `json:"failingStreak"`
+	Log           []HealthLogResponse `json:"log,omitempty"`
+}
+
+type HealthLogResponse struct {
+	Start    string `json:"start"`
+	End      string `json:"end"`
+	ExitCode int    `json:"exitCode"`
+	Output   string `json:"output"`
 }
 
 type MountResponse struct {

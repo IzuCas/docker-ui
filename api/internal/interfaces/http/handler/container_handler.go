@@ -67,6 +67,24 @@ func (h *ContainerHandler) Inspect(ctx context.Context, input *dto.ContainerInsp
 		}
 	}
 
+	var health *dto.HealthResponse
+	if container.State.Health != nil {
+		logs := make([]dto.HealthLogResponse, len(container.State.Health.Log))
+		for i, l := range container.State.Health.Log {
+			logs[i] = dto.HealthLogResponse{
+				Start:    l.Start.Format("2006-01-02T15:04:05Z"),
+				End:      l.End.Format("2006-01-02T15:04:05Z"),
+				ExitCode: l.ExitCode,
+				Output:   l.Output,
+			}
+		}
+		health = &dto.HealthResponse{
+			Status:        container.State.Health.Status,
+			FailingStreak: container.State.Health.FailingStreak,
+			Log:           logs,
+		}
+	}
+
 	return &dto.ContainerInspectOutput{
 		Body: dto.ContainerResponse{
 			ID:      container.ID,
@@ -85,6 +103,7 @@ func (h *ContainerHandler) Inspect(ctx context.Context, input *dto.ContainerInsp
 				ExitCode:   container.State.ExitCode,
 				StartedAt:  container.State.StartedAt.Format("2006-01-02T15:04:05Z"),
 				FinishedAt: container.State.FinishedAt.Format("2006-01-02T15:04:05Z"),
+				Health:     health,
 			},
 			Mounts: mounts,
 			Env:    container.Env,

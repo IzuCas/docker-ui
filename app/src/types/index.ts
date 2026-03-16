@@ -22,6 +22,20 @@ export interface ContainerState {
   exitCode: number;
   startedAt: string;
   finishedAt: string;
+  health?: HealthState;
+}
+
+export interface HealthState {
+  status: string;
+  failingStreak: number;
+  log?: HealthLog[];
+}
+
+export interface HealthLog {
+  start: string;
+  end: string;
+  exitCode: number;
+  output: string;
 }
 
 export interface ContainerSummary {

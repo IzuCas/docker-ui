@@ -4,7 +4,6 @@ import {
   Layers,
   HardDrive,
   Network,
-  Container,
   Activity,
   Cog,
   FolderOpen,
@@ -16,6 +15,7 @@ import ImageDetailPage from './pages/ImageDetail';
 import VolumesPage from './pages/Volumes';
 import NetworksPage from './pages/Networks';
 import StacksPage from './pages/Stacks';
+import StackDetailPage from './pages/StackDetail';
 import SystemPage from './pages/System';
 import SettingsPage from './pages/Settings';
 
@@ -25,8 +25,8 @@ function App() {
       <aside className="w-64 bg-bg-secondary border-r border-border flex flex-col fixed h-screen">
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-border">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center">
-            <Container size={22} className="text-white" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center">
+            <Layers size={22} className="text-white" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-text-primary">Docker</h1>
@@ -150,6 +150,7 @@ function App() {
           <Route path="/containers" element={<ContainersPage />} />
           <Route path="/containers/:id" element={<ContainerDetailPage />} />
           <Route path="/stacks" element={<StacksPage />} />
+          <Route path="/stacks/:name" element={<StackDetailPage />} />
           <Route path="/images" element={<ImagesPage />} />
           <Route path="/images/:id" element={<ImageDetailPage />} />
           <Route path="/volumes" element={<VolumesPage />} />

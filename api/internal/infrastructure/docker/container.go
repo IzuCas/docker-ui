@@ -82,6 +82,26 @@ func (c *ContainerClient) Inspect(ctx context.Context, id string) (*entity.Conta
 		}
 	}
 
+	var health *entity.HealthState
+	if cont.State.Health != nil {
+		logs := make([]entity.HealthLog, len(cont.State.Health.Log))
+		for i, l := range cont.State.Health.Log {
+			start, _ := time.Parse(time.RFC3339Nano, l.Start.Format(time.RFC3339Nano))
+			end, _ := time.Parse(time.RFC3339Nano, l.End.Format(time.RFC3339Nano))
+			logs[i] = entity.HealthLog{
+				Start:    start,
+				End:      end,
+				ExitCode: l.ExitCode,
+				Output:   l.Output,
+			}
+		}
+		health = &entity.HealthState{
+			Status:        cont.State.Health.Status,
+			FailingStreak: cont.State.Health.FailingStreak,
+			Log:           logs,
+		}
+	}
+
 	return &entity.Container{
 		ID:      cont.ID,
 		Name:    cont.Name,
@@ -99,6 +119,7 @@ func (c *ContainerClient) Inspect(ctx context.Context, id string) (*entity.Conta
 			ExitCode:   cont.State.ExitCode,
 			StartedAt:  startedAt,
 			FinishedAt: finishedAt,
+			Health:     health,
 		},
 		Mounts: mounts,
 		Env:    cont.Config.Env,
