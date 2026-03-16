@@ -23,9 +23,12 @@ import {
   ChevronRight,
   Search,
   X,
+  Settings,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
-import type { Container, ContainerSummary, ContainerStats } from '../types';
+import type { Container, ContainerSummary, ContainerStats, HealthcheckConfig, HealthState } from '../types';
 
 interface ServiceInfo {
   container: ContainerSummary;
@@ -47,6 +50,13 @@ export default function StackDetailPage() {
   const [logs, setLogs] = useState<string>('');
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsFilter, setLogsFilter] = useState<string>('');
+  const [healthcheckModal, setHealthcheckModal] = useState<{
+    containerId: string;
+    serviceName: string;
+    config?: HealthcheckConfig;
+    status?: HealthState;
+  } | null>(null);
+  const [copiedCommand, setCopiedCommand] = useState(false);
 
   const filteredLogs = useMemo(() => {
     if (!logsFilter.trim()) return logs;
@@ -442,12 +452,19 @@ export default function StackDetailPage() {
                 {containers.map((container) => {
                   const service = services.get(container.id);
                   const health = service?.details?.state.health;
+                  const healthcheck = service?.details?.healthcheck;
                   const serviceName = getServiceName(container);
 
                   return (
                     <div
                       key={container.id}
-                      className="flex items-center justify-between p-3 bg-bg-tertiary rounded-lg"
+                      className="flex items-center justify-between p-3 bg-bg-tertiary rounded-lg hover:bg-bg-secondary cursor-pointer transition-colors"
+                      onClick={() => setHealthcheckModal({
+                        containerId: container.id,
+                        serviceName,
+                        config: healthcheck,
+                        status: health,
+                      })}
                     >
                       <div className="flex items-center gap-3">
                         <Box size={16} className="text-text-secondary" />
@@ -484,11 +501,13 @@ export default function StackDetailPage() {
                                 ({health.failingStreak} failures)
                               </span>
                             )}
+                            <Settings size={14} className="text-text-secondary ml-1" />
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-text-secondary text-sm">
                             <HeartOff size={16} />
                             No health check
+                            <Settings size={14} className="ml-1" />
                           </div>
                         )}
                       </div>
@@ -838,6 +857,176 @@ export default function StackDetailPage() {
                 <div>Select a service to view logs</div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Healthcheck Configuration Modal */}
+      {healthcheckModal && (
+        <div className="modal-overlay" onClick={() => setHealthcheckModal(null)}>
+          <div className="modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title flex items-center gap-2">
+                <Heart size={20} />
+                Health Check - {healthcheckModal.serviceName}
+              </h3>
+              <button className="modal-close" onClick={() => setHealthcheckModal(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {healthcheckModal.config ? (
+                <div className="space-y-4">
+                  {/* Current Status */}
+                  {healthcheckModal.status && (
+                    <div className="p-3 rounded-lg bg-bg-tertiary">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-text-secondary">Current Status</span>
+                        <div className="flex items-center gap-2">
+                          {getHealthIcon(healthcheckModal.status)}
+                          <span
+                            className={`font-medium ${
+                              healthcheckModal.status.status === 'healthy'
+                                ? 'text-accent-green'
+                                : healthcheckModal.status.status === 'unhealthy'
+                                ? 'text-accent-red'
+                                : 'text-accent-yellow'
+                            }`}
+                          >
+                            {healthcheckModal.status.status}
+                          </span>
+                        </div>
+                      </div>
+                      {healthcheckModal.status.failingStreak > 0 && (
+                        <div className="text-sm text-accent-red">
+                          Failing streak: {healthcheckModal.status.failingStreak}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Configuration */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 text-text-secondary">Configuration</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start p-2 bg-bg-tertiary rounded">
+                        <span className="text-sm text-text-secondary">Command</span>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm text-text-primary font-mono">
+                            {healthcheckModal.config.test.slice(1).join(' ')}
+                          </code>
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => {
+                              navigator.clipboard.writeText(healthcheckModal.config!.test.slice(1).join(' '));
+                              setCopiedCommand(true);
+                              setTimeout(() => setCopiedCommand(false), 2000);
+                            }}
+                          >
+                            {copiedCommand ? <Check size={14} className="text-accent-green" /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-2 bg-bg-tertiary rounded">
+                          <span className="text-xs text-text-secondary block">Interval</span>
+                          <span className="text-sm">{healthcheckModal.config.interval}</span>
+                        </div>
+                        <div className="p-2 bg-bg-tertiary rounded">
+                          <span className="text-xs text-text-secondary block">Timeout</span>
+                          <span className="text-sm">{healthcheckModal.config.timeout}</span>
+                        </div>
+                        <div className="p-2 bg-bg-tertiary rounded">
+                          <span className="text-xs text-text-secondary block">Start Period</span>
+                          <span className="text-sm">{healthcheckModal.config.startPeriod}</span>
+                        </div>
+                        <div className="p-2 bg-bg-tertiary rounded">
+                          <span className="text-xs text-text-secondary block">Retries</span>
+                          <span className="text-sm">{healthcheckModal.config.retries}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Health Checks */}
+                  {healthcheckModal.status?.log && healthcheckModal.status.log.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-3 text-text-secondary">Recent Health Checks</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {healthcheckModal.status.log.slice().reverse().map((log, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded text-sm ${
+                              log.exitCode === 0 ? 'bg-accent-green/10' : 'bg-accent-red/10'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={log.exitCode === 0 ? 'text-accent-green' : 'text-accent-red'}>
+                                {log.exitCode === 0 ? <CheckCircle size={14} className="inline mr-1" /> : <XCircle size={14} className="inline mr-1" />}
+                                Exit code: {log.exitCode}
+                              </span>
+                              <span className="text-xs text-text-secondary">
+                                {new Date(log.start).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            {log.output && (
+                              <pre className="text-xs text-text-secondary mt-1 whitespace-pre-wrap font-mono">
+                                {log.output.trim()}
+                              </pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Docker Compose Example */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-text-secondary">
+                      To modify, update your docker-compose.yml:
+                    </h4>
+                    <pre className="p-3 bg-bg-tertiary rounded text-xs font-mono overflow-x-auto">
+{`services:
+  ${healthcheckModal.serviceName}:
+    healthcheck:
+      test: ${JSON.stringify(healthcheckModal.config.test.slice(1))}
+      interval: ${healthcheckModal.config.interval}
+      timeout: ${healthcheckModal.config.timeout}
+      start_period: ${healthcheckModal.config.startPeriod}
+      retries: ${healthcheckModal.config.retries}`}
+                    </pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <HeartOff size={48} className="mx-auto mb-4 text-text-secondary" style={{ opacity: 0.5 }} />
+                  <h4 className="font-medium mb-2">No Health Check Configured</h4>
+                  <p className="text-sm text-text-secondary mb-4">
+                    Add a health check to monitor this service's status.
+                  </p>
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-text-secondary text-left">
+                      Add to your docker-compose.yml:
+                    </h4>
+                    <pre className="p-3 bg-bg-tertiary rounded text-xs font-mono overflow-x-auto text-left">
+{`services:
+  ${healthcheckModal.serviceName}:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3`}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setHealthcheckModal(null)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

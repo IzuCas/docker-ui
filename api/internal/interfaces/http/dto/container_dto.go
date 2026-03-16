@@ -39,16 +39,17 @@ type ContainerInspectOutput struct {
 }
 
 type ContainerResponse struct {
-	ID      string                 `json:"id"`
-	Name    string                 `json:"name"`
-	Image   string                 `json:"image"`
-	ImageID string                 `json:"imageId"`
-	Command string                 `json:"command"`
-	Created string                 `json:"created"`
-	State   ContainerStateResponse `json:"state"`
-	Env     []string               `json:"env"`
-	Labels  map[string]string      `json:"labels"`
-	Mounts  []MountResponse        `json:"mounts"`
+	ID          string                     `json:"id"`
+	Name        string                     `json:"name"`
+	Image       string                     `json:"image"`
+	ImageID     string                     `json:"imageId"`
+	Command     string                     `json:"command"`
+	Created     string                     `json:"created"`
+	State       ContainerStateResponse     `json:"state"`
+	Env         []string                   `json:"env"`
+	Labels      map[string]string          `json:"labels"`
+	Mounts      []MountResponse            `json:"mounts"`
+	Healthcheck *HealthcheckConfigResponse `json:"healthcheck,omitempty"`
 }
 
 type ContainerStateResponse struct {
@@ -75,6 +76,14 @@ type HealthLogResponse struct {
 	End      string `json:"end"`
 	ExitCode int    `json:"exitCode"`
 	Output   string `json:"output"`
+}
+
+type HealthcheckConfigResponse struct {
+	Test        []string `json:"test"`
+	Interval    string   `json:"interval"`
+	Timeout     string   `json:"timeout"`
+	StartPeriod string   `json:"startPeriod"`
+	Retries     int      `json:"retries"`
 }
 
 type MountResponse struct {

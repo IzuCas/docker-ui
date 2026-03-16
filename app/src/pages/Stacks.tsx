@@ -287,7 +287,12 @@ export default function StacksPage() {
                               </Link>
                             </td>
                             <td className="text-text-secondary text-sm">
-                              {container.image}
+                              <span 
+                                className="block truncate max-w-[200px]" 
+                                title={container.image}
+                              >
+                                {container.image}
+                              </span>
                             </td>
                             <td>
                               <span
@@ -360,7 +365,14 @@ export default function StacksPage() {
                         </Link>
                         <div className="code text-xs text-text-secondary">{container.id.slice(0, 12)}</div>
                       </td>
-                      <td className="text-text-secondary text-sm">{container.image}</td>
+                      <td className="text-text-secondary text-sm">
+                        <span 
+                          className="block truncate max-w-[200px]" 
+                          title={container.image}
+                        >
+                          {container.image}
+                        </span>
+                      </td>
                       <td>
                         <span
                           className={`badge ${

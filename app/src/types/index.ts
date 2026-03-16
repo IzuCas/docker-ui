@@ -10,6 +10,7 @@ export interface Container {
   mounts: Mount[];
   env: string[];
   labels: Record<string, string>;
+  healthcheck?: HealthcheckConfig;
 }
 
 export interface ContainerState {
@@ -36,6 +37,14 @@ export interface HealthLog {
   end: string;
   exitCode: number;
   output: string;
+}
+
+export interface HealthcheckConfig {
+  test: string[];
+  interval: string;
+  timeout: string;
+  startPeriod: string;
+  retries: number;
 }
 
 export interface ContainerSummary {

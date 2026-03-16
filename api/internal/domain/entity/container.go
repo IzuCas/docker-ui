@@ -31,6 +31,15 @@ type HealthLog struct {
 	Output   string
 }
 
+// HealthcheckConfig represents container healthcheck configuration
+type HealthcheckConfig struct {
+	Test        []string      // Command to run
+	Interval    time.Duration // Interval between checks
+	Timeout     time.Duration // Timeout for each check
+	StartPeriod time.Duration // Grace period on startup
+	Retries     int           // Number of retries before unhealthy
+}
+
 // PortBinding represents a port binding configuration
 type PortBinding struct {
 	HostIP   string
@@ -77,6 +86,7 @@ type Container struct {
 	Mounts          []Mount
 	Ports           []PortMapping
 	NetworkSettings NetworkSettings
+	Healthcheck     *HealthcheckConfig
 }
 
 // ContainerSummary represents a summary of a container (for listing)

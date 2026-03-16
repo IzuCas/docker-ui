@@ -85,6 +85,17 @@ func (h *ContainerHandler) Inspect(ctx context.Context, input *dto.ContainerInsp
 		}
 	}
 
+	var healthcheck *dto.HealthcheckConfigResponse
+	if container.Healthcheck != nil {
+		healthcheck = &dto.HealthcheckConfigResponse{
+			Test:        container.Healthcheck.Test,
+			Interval:    container.Healthcheck.Interval.String(),
+			Timeout:     container.Healthcheck.Timeout.String(),
+			StartPeriod: container.Healthcheck.StartPeriod.String(),
+			Retries:     container.Healthcheck.Retries,
+		}
+	}
+
 	return &dto.ContainerInspectOutput{
 		Body: dto.ContainerResponse{
 			ID:      container.ID,
@@ -105,9 +116,10 @@ func (h *ContainerHandler) Inspect(ctx context.Context, input *dto.ContainerInsp
 				FinishedAt: container.State.FinishedAt.Format("2006-01-02T15:04:05Z"),
 				Health:     health,
 			},
-			Mounts: mounts,
-			Env:    container.Env,
-			Labels: container.Labels,
+			Mounts:      mounts,
+			Env:         container.Env,
+			Labels:      container.Labels,
+			Healthcheck: healthcheck,
 		},
 	}, nil
 }

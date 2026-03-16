@@ -102,6 +102,17 @@ func (c *ContainerClient) Inspect(ctx context.Context, id string) (*entity.Conta
 		}
 	}
 
+	var healthcheck *entity.HealthcheckConfig
+	if cont.Config.Healthcheck != nil && len(cont.Config.Healthcheck.Test) > 0 {
+		healthcheck = &entity.HealthcheckConfig{
+			Test:        cont.Config.Healthcheck.Test,
+			Interval:    cont.Config.Healthcheck.Interval,
+			Timeout:     cont.Config.Healthcheck.Timeout,
+			StartPeriod: cont.Config.Healthcheck.StartPeriod,
+			Retries:     cont.Config.Healthcheck.Retries,
+		}
+	}
+
 	return &entity.Container{
 		ID:      cont.ID,
 		Name:    cont.Name,
@@ -121,9 +132,10 @@ func (c *ContainerClient) Inspect(ctx context.Context, id string) (*entity.Conta
 			FinishedAt: finishedAt,
 			Health:     health,
 		},
-		Mounts: mounts,
-		Env:    cont.Config.Env,
-		Labels: cont.Config.Labels,
+		Mounts:      mounts,
+		Env:         cont.Config.Env,
+		Labels:      cont.Config.Labels,
+		Healthcheck: healthcheck,
 	}, nil
 }
 

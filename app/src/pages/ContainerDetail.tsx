@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Play,
@@ -15,6 +15,7 @@ import {
   Save,
   X,
   Trash,
+  Search,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
 import { useContainerStats, useContainerLogs } from '../hooks/useWebSocket';
@@ -81,11 +82,22 @@ export default function ContainerDetailPage() {
   // Fallback HTTP stats
   const [httpStats, setHttpStats] = useState<ContainerStats | null>(null);
   const [httpLogs, setHttpLogs] = useState<string>('');
+  const [logsFilter, setLogsFilter] = useState<string>('');
 
   const stats = useRealtimeStats ? wsStats : httpStats;
   const logs = useRealtimeLogs 
     ? wsLogs.map(l => `${l.timestamp} [${l.stream}] ${l.message}`).join('\n')
     : httpLogs;
+
+  // Filtered logs based on search
+  const filteredLogs = useMemo(() => {
+    if (!logsFilter.trim() || !logs) return logs;
+    const filter = logsFilter.toLowerCase();
+    return logs
+      .split('\n')
+      .filter(line => line.toLowerCase().includes(filter))
+      .join('\n');
+  }, [logs, logsFilter]);
 
   useEffect(() => {
     if (!id) return;
@@ -588,7 +600,7 @@ export default function ContainerDetailPage() {
 
       {activeTab === 'logs' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {useRealtimeLogs && (
                 <span style={{ 
@@ -610,6 +622,32 @@ export default function ContainerDetailPage() {
                 {useRealtimeLogs ? 'Clear' : 'Refresh'}
               </button>
             </div>
+            {/* Search filter - centered */}
+            <div className="flex items-center gap-2 flex-1 justify-center">
+              <div className="relative" style={{ width: '300px' }}>
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                <input
+                  type="text"
+                  className="form-input w-full pl-9 pr-8"
+                  placeholder="Filter logs..."
+                  value={logsFilter}
+                  onChange={(e) => setLogsFilter(e.target.value)}
+                />
+                {logsFilter && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+                    onClick={() => setLogsFilter('')}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              {logsFilter && (
+                <span className="text-sm text-text-secondary whitespace-nowrap">
+                  {filteredLogs.split('\n').filter(line => line.trim()).length} lines
+                </span>
+              )}
+            </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -619,7 +657,9 @@ export default function ContainerDetailPage() {
               Real-time
             </label>
           </div>
-          <div className="logs-container">{logs || 'No logs available'}</div>
+          <div className="logs-container">
+            {filteredLogs ? filteredLogs : (logsFilter ? `No logs matching "${logsFilter}"` : 'No logs available')}
+          </div>
         </div>
       )}
 
