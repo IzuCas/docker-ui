@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Network, Plus, Trash2, RefreshCw, AlertTriangle, Link, Unlink } from 'lucide-react';
-import { networkApi } from '../services/api';
+import { networkApi, containerApi } from '../services/api';
 import type { NetworkSummary } from '../types';
 
 export default function NetworksPage() {
@@ -319,12 +319,53 @@ interface ConnectContainerModalProps {
 function ConnectContainerModal({ networkId, action, onClose, onSuccess }: ConnectContainerModalProps) {
   const [containerId, setContainerId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingContainers, setLoadingContainers] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [availableContainers, setAvailableContainers] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const loadContainers = async () => {
+      try {
+        setLoadingContainers(true);
+        const [allContainers, networkDetails] = await Promise.all([
+          containerApi.list(true),
+          networkApi.inspect(networkId)
+        ]);
+
+        const connectedIds = Object.keys(networkDetails.containers || {});
+        
+        let filtered: { id: string; name: string }[];
+        if (action === 'connect') {
+          // Show containers NOT connected to this network
+          filtered = allContainers
+            .filter(c => !connectedIds.includes(c.id))
+            .map(c => ({ id: c.id, name: c.names[0]?.replace(/^\//, '') || c.id.slice(0, 12) }));
+        } else {
+          // Show containers connected to this network
+          filtered = Object.entries(networkDetails.containers || {}).map(([id, endpoint]) => ({
+            id,
+            name: endpoint.name || id.slice(0, 12)
+          }));
+        }
+        
+        setAvailableContainers(filtered);
+        if (filtered.length > 0) {
+          setContainerId(filtered[0].id);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load containers');
+      } finally {
+        setLoadingContainers(false);
+      }
+    };
+
+    loadContainers();
+  }, [networkId, action]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!containerId.trim()) {
-      setError('Container ID is required');
+    if (!containerId) {
+      setError('Please select a container');
       return;
     }
     try {
@@ -358,20 +399,42 @@ function ConnectContainerModal({ networkId, action, onClose, onSuccess }: Connec
               </div>
             )}
             <div className="form-group">
-              <label className="form-label">Container ID or Name *</label>
-              <input
-                type="text"
-                className="form-input"
-                value={containerId}
-                onChange={(e) => setContainerId(e.target.value)}
-                placeholder="container-id or container-name"
-                required
-              />
+              <label className="form-label">
+                {action === 'connect' ? 'Available Containers' : 'Connected Containers'} *
+              </label>
+              {loadingContainers ? (
+                <div style={{ color: 'var(--text-secondary)', padding: '0.5rem' }}>
+                  Loading containers...
+                </div>
+              ) : availableContainers.length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', padding: '0.5rem' }}>
+                  {action === 'connect' 
+                    ? 'All containers are already connected to this network'
+                    : 'No containers connected to this network'}
+                </div>
+              ) : (
+                <select
+                  className="form-input"
+                  value={containerId}
+                  onChange={(e) => setContainerId(e.target.value)}
+                  required
+                >
+                  {availableContainers.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.id.slice(0, 12)})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              disabled={loading || loadingContainers || availableContainers.length === 0}
+            >
               {loading ? 'Processing...' : action === 'connect' ? 'Connect' : 'Disconnect'}
             </button>
           </div>

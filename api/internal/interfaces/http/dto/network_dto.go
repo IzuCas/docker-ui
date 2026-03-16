@@ -72,21 +72,21 @@ type NetworkCreateInput struct {
 }
 
 type NetworkCreateRequest struct {
-	Name       string             `json:"name" required:"true"`
-	Driver     string             `json:"driver"`
-	Internal   bool               `json:"internal"`
-	Attachable bool               `json:"attachable"`
-	Ingress    bool               `json:"ingress"`
-	EnableIPv6 bool               `json:"enableIPv6"`
-	IPAM       *IPAMRequest       `json:"ipam"`
-	Options    map[string]string  `json:"options"`
-	Labels     map[string]string  `json:"labels"`
+	Name       string            `json:"name" required:"true"`
+	Driver     string            `json:"driver"`
+	Internal   bool              `json:"internal"`
+	Attachable bool              `json:"attachable"`
+	Ingress    bool              `json:"ingress"`
+	EnableIPv6 bool              `json:"enableIPv6"`
+	IPAM       *IPAMRequest      `json:"ipam"`
+	Options    map[string]string `json:"options"`
+	Labels     map[string]string `json:"labels"`
 }
 
 type IPAMRequest struct {
-	Driver  string               `json:"driver"`
-	Config  []IPAMConfigRequest  `json:"config"`
-	Options map[string]string    `json:"options"`
+	Driver  string              `json:"driver"`
+	Config  []IPAMConfigRequest `json:"config"`
+	Options map[string]string   `json:"options"`
 }
 
 type IPAMConfigRequest struct {
@@ -116,8 +116,8 @@ type NetworkConnectInput struct {
 }
 
 type NetworkConnectRequest struct {
-	Container      string                  `json:"container" required:"true"`
-	EndpointConfig *EndpointConfigRequest  `json:"endpointConfig"`
+	Container      string                 `json:"container" required:"true"`
+	EndpointConfig *EndpointConfigRequest `json:"endpointConfig" required:"false"`
 }
 
 type EndpointConfigRequest struct {
