@@ -43,6 +43,7 @@ func (h *ContainerHandler) List(ctx context.Context, input *dto.ContainerListInp
 			State:   c.State,
 			Status:  c.Status,
 			Ports:   ports,
+			Labels:  c.Labels,
 		}
 	}
 

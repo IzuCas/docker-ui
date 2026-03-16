@@ -34,6 +34,7 @@ export interface ContainerSummary {
   state: string;
   status: string;
   ports?: PortMapping[];
+  labels?: Record<string, string>;
 }
 
 export interface PortMapping {

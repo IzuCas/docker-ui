@@ -7,6 +7,7 @@ import {
   Container,
   Activity,
   Cog,
+  FolderOpen,
 } from 'lucide-react';
 import ContainersPage from './pages/Containers';
 import ContainerDetailPage from './pages/ContainerDetail';
@@ -14,6 +15,7 @@ import ImagesPage from './pages/Images';
 import ImageDetailPage from './pages/ImageDetail';
 import VolumesPage from './pages/Volumes';
 import NetworksPage from './pages/Networks';
+import StacksPage from './pages/Stacks';
 import SystemPage from './pages/System';
 import SettingsPage from './pages/Settings';
 
@@ -49,6 +51,19 @@ function App() {
           >
             <Box size={18} />
             Containers
+          </NavLink>
+          <NavLink 
+            to="/stacks" 
+            className={({ isActive }) => 
+              `flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive 
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-2 border-accent-blue' 
+                  : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+              }`
+            }
+          >
+            <FolderOpen size={18} />
+            Stacks
           </NavLink>
           <NavLink 
             to="/images" 
@@ -134,6 +149,7 @@ function App() {
           <Route path="/" element={<Navigate to="/containers" replace />} />
           <Route path="/containers" element={<ContainersPage />} />
           <Route path="/containers/:id" element={<ContainerDetailPage />} />
+          <Route path="/stacks" element={<StacksPage />} />
           <Route path="/images" element={<ImagesPage />} />
           <Route path="/images/:id" element={<ImageDetailPage />} />
           <Route path="/volumes" element={<VolumesPage />} />

@@ -54,6 +54,7 @@ func (c *ContainerClient) List(ctx context.Context, all bool) ([]entity.Containe
 			State:   cont.State,
 			Status:  cont.Status,
 			Ports:   ports,
+			Labels:  cont.Labels,
 		}
 	}
 
