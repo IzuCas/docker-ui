@@ -102,30 +102,48 @@ export default function VolumesPage() {
       <div className="card">
         <div className="card-body">
           {volumes.length > 0 ? (
-            <table className="table">
+            <table className="table" style={{ tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Driver</th>
-                  <th>Scope</th>
-                  <th>Mount Point</th>
-                  <th>Created</th>
-                  <th>Actions</th>
+                  <th style={{ width: '30%' }}>Name</th>
+                  <th style={{ width: '10%' }}>Driver</th>
+                  <th style={{ width: '10%' }}>Scope</th>
+                  <th style={{ width: '25%' }}>Mount Point</th>
+                  <th style={{ width: '15%' }}>Created</th>
+                  <th style={{ width: '10%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {volumes.map((volume) => (
+                {volumes.map((volume) => {
+                  const isAnonymous = volume.name.length === 64 && /^[a-f0-9]+$/.test(volume.name);
+                  const displayName = isAnonymous ? volume.name.slice(0, 12) + '...' : volume.name;
+                  return (
                   <tr key={volume.name}>
                     <td>
-                      <span className="code">{volume.name}</span>
+                      <span 
+                        className="code" 
+                        style={{ 
+                          display: 'block',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title={volume.name}
+                      >
+                        {displayName}
+                      </span>
                     </td>
                     <td>
                       <span className="badge badge-info">{volume.driver}</span>
                     </td>
                     <td>{volume.scope}</td>
                     <td
-                      className="truncate code"
-                      style={{ maxWidth: '300px', fontSize: '0.75rem' }}
+                      style={{ 
+                        fontSize: '0.75rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
                       title={volume.mountpoint}
                     >
                       {volume.mountpoint}
@@ -145,7 +163,8 @@ export default function VolumesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           ) : (
