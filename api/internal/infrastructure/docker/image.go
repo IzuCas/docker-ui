@@ -110,6 +110,21 @@ func (c *ImageClient) Pull(ctx context.Context, refImage string, options entity.
 	return err
 }
 
+// PullWithProgress pulls an image and returns a reader for progress updates
+func (c *ImageClient) PullWithProgress(ctx context.Context, refImage string, options entity.ImagePullOptions) (io.ReadCloser, error) {
+	ref := refImage
+	if options.Tag != "" {
+		ref = ref + ":" + options.Tag
+	}
+
+	pullOptions := image.PullOptions{}
+	if options.Platform != "" {
+		pullOptions.Platform = options.Platform
+	}
+
+	return c.docker.ImagePull(ctx, ref, pullOptions)
+}
+
 func (c *ImageClient) Remove(ctx context.Context, id string, force bool, pruneChildren bool) ([]string, []string, error) {
 	deleted, err := c.docker.ImageRemove(ctx, id, image.RemoveOptions{
 		Force:         force,

@@ -1,12 +1,13 @@
 package service
 
 import (
-"context"
+	"context"
+	"io"
 
-"github.com/docker/docker/api/types/registry"
+	"github.com/docker/docker/api/types/registry"
 
-"app/example/internal/domain/client"
-"app/example/internal/domain/entity"
+	"app/example/internal/domain/client"
+	"app/example/internal/domain/entity"
 )
 
 type ImageService struct {
@@ -27,6 +28,10 @@ func (s *ImageService) Inspect(ctx context.Context, id string) (*entity.ImageIns
 
 func (s *ImageService) Pull(ctx context.Context, image string, opts entity.ImagePullOptions) error {
 	return s.client.Pull(ctx, image, opts)
+}
+
+func (s *ImageService) PullWithProgress(ctx context.Context, image string, opts entity.ImagePullOptions) (io.ReadCloser, error) {
+	return s.client.PullWithProgress(ctx, image, opts)
 }
 
 func (s *ImageService) Remove(ctx context.Context, id string, force bool, pruneChildren bool) ([]string, []string, error) {

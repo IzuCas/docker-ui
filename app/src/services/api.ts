@@ -37,6 +37,17 @@ function getApiUrl(): string {
 const API_URL = getApiUrl();
 console.log('[API] Initialized with URL:', API_URL);
 
+// Export the base URL for SSE/EventSource usage
+export function getApiBaseUrl(): string {
+  // For SSE, we need the direct API URL (not the proxy)
+  if (window.electronAPI?.isElectron) {
+    return window.electronAPI.getApiUrl().replace('/api', '');
+  }
+  // In web mode, use the actual API server URL
+  // The SSE endpoint is registered at /images/pull/stream (without /api prefix)
+  return 'http://localhost:8001';
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}

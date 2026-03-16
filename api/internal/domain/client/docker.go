@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"io"
 
 	"github.com/docker/docker/api/types/registry"
 
@@ -38,6 +39,7 @@ type ImageClient interface {
 	List(ctx context.Context, all bool) ([]entity.ImageSummary, error)
 	Inspect(ctx context.Context, id string) (*entity.ImageInspect, error)
 	Pull(ctx context.Context, image string, options entity.ImagePullOptions) error
+	PullWithProgress(ctx context.Context, image string, options entity.ImagePullOptions) (io.ReadCloser, error)
 	Remove(ctx context.Context, id string, force bool, pruneChildren bool) ([]string, []string, error)
 	Tag(ctx context.Context, source string, repo string, tag string) error
 	History(ctx context.Context, id string) ([]entity.ImageHistory, error)

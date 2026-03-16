@@ -21,6 +21,8 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
+  Search,
+  X,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
 import type { Container, ContainerSummary, ContainerStats } from '../types';
@@ -44,6 +46,17 @@ export default function StackDetailPage() {
   const [selectedLogs, setSelectedLogs] = useState<string | null>(null);
   const [logs, setLogs] = useState<string>('');
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logsFilter, setLogsFilter] = useState<string>('');
+
+  const filteredLogs = useMemo(() => {
+    if (!logsFilter.trim()) return logs;
+    const lines = logs.split('\n');
+    const filtered = lines.filter((line) => 
+      line.toLowerCase().includes(logsFilter.toLowerCase()) ||
+      line.startsWith('━━━') // Keep section headers
+    );
+    return filtered.join('\n');
+  }, [logs, logsFilter]);
 
   const loadContainers = useCallback(async () => {
     try {
@@ -778,13 +791,47 @@ export default function StackDetailPage() {
                 </button>
               )}
             </div>
+            {selectedLogs && logs && (
+              <div className="flex items-center gap-2 mb-4">
+                <div className="relative flex-1" style={{ maxWidth: '400px' }}>
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <input
+                    type="text"
+                    className="form-input w-full pl-9 pr-8"
+                    placeholder="Filter logs..."
+                    value={logsFilter}
+                    onChange={(e) => setLogsFilter(e.target.value)}
+                  />
+                  {logsFilter && (
+                    <button
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+                      onClick={() => setLogsFilter('')}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                {logsFilter && (
+                  <span className="text-sm text-text-secondary">
+                    {filteredLogs.split('\n').filter(line => line.trim()).length} lines matching
+                  </span>
+                )}
+              </div>
+            )}
             {logsLoading ? (
               <div className="loading">
                 <div className="spinner" />
                 Loading logs...
               </div>
             ) : logs ? (
-              <div className="logs-container">{logs}</div>
+              filteredLogs ? (
+                <div className="logs-container">{filteredLogs}</div>
+              ) : (
+                <div className="text-center text-text-secondary py-8">
+                  <Search size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+                  <div>No logs matching "{logsFilter}"</div>
+                </div>
+              )
             ) : (
               <div className="text-center text-text-secondary py-8">
                 <FileText size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />

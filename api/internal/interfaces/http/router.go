@@ -55,6 +55,8 @@ func (r *Router) RegisterWebSocketRoutes(mux *chi.Mux) {
 	mux.HandleFunc("/ws/containers/stats", r.wsHandler.ContainerStats)
 	mux.HandleFunc("/ws/containers/logs", r.wsHandler.ContainerLogs)
 	mux.HandleFunc("/ws/system", r.wsHandler.SystemInfo)
+	// SSE endpoint for image pull progress
+	mux.HandleFunc("/images/pull/stream", r.imageHandler.PullStream)
 }
 
 // HealthCheck is a simple health check endpoint

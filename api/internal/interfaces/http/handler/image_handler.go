@@ -1,7 +1,15 @@
 package handler
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/danielgtaylor/huma/v2"
 
 	"app/example/internal/application/service"
 	"app/example/internal/domain/entity"
@@ -38,7 +46,11 @@ func (h *ImageHandler) List(ctx context.Context, input *dto.ImageListInput) (*dt
 }
 
 func (h *ImageHandler) Inspect(ctx context.Context, input *dto.ImageInspectInput) (*dto.ImageInspectOutput, error) {
-	image, err := h.service.Inspect(ctx, input.ID)
+	imageID, _ := url.QueryUnescape(input.ID)
+	if imageID == "" {
+		imageID = input.ID
+	}
+	image, err := h.service.Inspect(ctx, imageID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +102,25 @@ func (h *ImageHandler) Pull(ctx context.Context, input *dto.ImagePullInput) (*dt
 }
 
 func (h *ImageHandler) Remove(ctx context.Context, input *dto.ImageRemoveInput) (*dto.ImageRemoveOutput, error) {
-	deleted, untagged, err := h.service.Remove(ctx, input.ID, input.Force, input.PruneChildren)
+	// URL decode the image ID to handle encoded characters like %3A for :
+	imageID, _ := url.QueryUnescape(input.ID)
+	if imageID == "" {
+		imageID = input.ID
+	}
+	deleted, untagged, err := h.service.Remove(ctx, imageID, input.Force, input.PruneChildren)
 	if err != nil {
-		return nil, err
+		errMsg := err.Error()
+		// Check for common Docker error patterns
+		if strings.Contains(errMsg, "image is being used by") || strings.Contains(errMsg, "is using") {
+			return nil, huma.Error409Conflict("Cannot remove image: it is being used by one or more containers. Stop and remove the containers first, or use force delete.")
+		}
+		if strings.Contains(errMsg, "No such image") {
+			return nil, huma.Error404NotFound("Image not found")
+		}
+		if strings.Contains(errMsg, "image has dependent child images") {
+			return nil, huma.Error409Conflict("Cannot remove image: it has dependent child images. Remove child images first.")
+		}
+		return nil, huma.Error500InternalServerError(errMsg)
 	}
 
 	return &dto.ImageRemoveOutput{
@@ -104,14 +132,22 @@ func (h *ImageHandler) Remove(ctx context.Context, input *dto.ImageRemoveInput) 
 }
 
 func (h *ImageHandler) Tag(ctx context.Context, input *dto.ImageTagInput) (*dto.ImageTagOutput, error) {
-	if err := h.service.Tag(ctx, input.ID, input.Body.Repo, input.Body.Tag); err != nil {
+	imageID, _ := url.QueryUnescape(input.ID)
+	if imageID == "" {
+		imageID = input.ID
+	}
+	if err := h.service.Tag(ctx, imageID, input.Body.Repo, input.Body.Tag); err != nil {
 		return nil, err
 	}
 	return &dto.ImageTagOutput{}, nil
 }
 
 func (h *ImageHandler) History(ctx context.Context, input *dto.ImageHistoryInput) (*dto.ImageHistoryOutput, error) {
-	history, err := h.service.History(ctx, input.ID)
+	imageID, _ := url.QueryUnescape(input.ID)
+	if imageID == "" {
+		imageID = input.ID
+	}
+	history, err := h.service.History(ctx, imageID)
 	if err != nil {
 		return nil, err
 	}
@@ -163,4 +199,90 @@ func (h *ImageHandler) Prune(ctx context.Context, input *dto.ImagePruneInput) (*
 			SpaceReclaimed: spaceReclaimed,
 		},
 	}, nil
+}
+
+// PullProgress represents a single progress update from Docker pull
+type PullProgress struct {
+	Status         string `json:"status"`
+	ID             string `json:"id,omitempty"`
+	Progress       string `json:"progress,omitempty"`
+	ProgressDetail struct {
+		Current int64 `json:"current,omitempty"`
+		Total   int64 `json:"total,omitempty"`
+	} `json:"progressDetail,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
+// PullStream handles SSE streaming for image pull progress
+func (h *ImageHandler) PullStream(w http.ResponseWriter, r *http.Request) {
+	// Get query parameters
+	imageName := r.URL.Query().Get("image")
+	tag := r.URL.Query().Get("tag")
+	platform := r.URL.Query().Get("platform")
+
+	if imageName == "" {
+		http.Error(w, "image parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	if tag == "" {
+		tag = "latest"
+	}
+
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	// Build pull options
+	opts := entity.ImagePullOptions{
+		Tag:      tag,
+		Platform: platform,
+	}
+
+	// Start the pull with progress
+	reader, err := h.service.PullWithProgress(r.Context(), imageName, opts)
+	if err != nil {
+		errData, _ := json.Marshal(map[string]string{"error": err.Error()})
+		fmt.Fprintf(w, "data: %s\n\n", errData)
+		flusher.Flush()
+		return
+	}
+	defer reader.Close()
+
+	// Stream progress updates
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		// Parse the progress JSON
+		var progress PullProgress
+		if err := json.Unmarshal([]byte(line), &progress); err != nil {
+			continue
+		}
+
+		// Send as SSE event
+		fmt.Fprintf(w, "data: %s\n\n", line)
+		flusher.Flush()
+
+		// Check if there's an error
+		if progress.Error != "" {
+			return
+		}
+	}
+
+	// Send completion message
+	completeData, _ := json.Marshal(map[string]string{"status": "complete", "message": fmt.Sprintf("Successfully pulled %s:%s", imageName, tag)})
+	fmt.Fprintf(w, "data: %s\n\n", completeData)
+	flusher.Flush()
 }
