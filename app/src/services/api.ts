@@ -305,3 +305,45 @@ export const settingsApi = {
       body: JSON.stringify(config),
     }),
 };
+
+// Metrics API
+import type {
+  ContainerMetricsResponse,
+  AllContainerMetricsResponse,
+  LatestMetricsResponse,
+  SystemMetricsResponse,
+  MetricsStoreStats,
+} from '../types';
+
+export const metricsApi = {
+  getContainerMetrics: (containerId: string, start?: string, end?: string, resolution?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.set('start', start);
+    if (end) params.set('end', end);
+    if (resolution) params.set('resolution', resolution);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return request<ContainerMetricsResponse>(`/metrics/containers/${containerId}${query}`);
+  },
+
+  getAllContainerMetrics: (start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.set('start', start);
+    if (end) params.set('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return request<AllContainerMetricsResponse>(`/metrics/containers${query}`);
+  },
+
+  getLatestMetrics: () =>
+    request<LatestMetricsResponse>('/metrics/latest'),
+
+  getSystemMetrics: (start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.set('start', start);
+    if (end) params.set('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return request<SystemMetricsResponse>(`/metrics/system${query}`);
+  },
+
+  getStats: () =>
+    request<MetricsStoreStats>('/metrics/stats'),
+};

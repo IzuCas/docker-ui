@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import {
   ArrowLeft,
   Play,
   Square,
@@ -26,9 +38,10 @@ import {
   Settings,
   Copy,
   Check,
+  BarChart3,
 } from 'lucide-react';
-import { containerApi } from '../services/api';
-import type { Container, ContainerSummary, ContainerStats, HealthcheckConfig, HealthState } from '../types';
+import { containerApi, metricsApi } from '../services/api';
+import type { Container, ContainerSummary, ContainerStats, HealthcheckConfig, HealthState, ContainerMetricPoint } from '../types';
 
 interface ServiceInfo {
   container: ContainerSummary;
@@ -44,7 +57,7 @@ export default function StackDetailPage() {
   const [services, setServices] = useState<Map<string, ServiceInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'logs' | 'metrics'>('overview');
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set());
   const [selectedLogs, setSelectedLogs] = useState<string | null>(null);
   const [logs, setLogs] = useState<string>('');
@@ -57,6 +70,9 @@ export default function StackDetailPage() {
     status?: HealthState;
   } | null>(null);
   const [copiedCommand, setCopiedCommand] = useState(false);
+  const [metricsData, setMetricsData] = useState<Map<string, { name: string; metrics: ContainerMetricPoint[] }>>(new Map());
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [metricsTimeRange, setMetricsTimeRange] = useState<{ label: string; value: number }>({ label: '30m', value: 30 * 60 * 1000 });
 
   const filteredLogs = useMemo(() => {
     if (!logsFilter.trim()) return logs;
@@ -270,6 +286,47 @@ export default function StackDetailPage() {
     }
   };
 
+  // Load metrics for stack containers
+  const loadMetrics = useCallback(async () => {
+    if (containers.length === 0) return;
+    setMetricsLoading(true);
+    try {
+      const end = new Date().toISOString();
+      const start = new Date(Date.now() - metricsTimeRange.value).toISOString();
+
+      const newMetricsData = new Map<string, { name: string; metrics: ContainerMetricPoint[] }>();
+
+      await Promise.all(
+        containers.map(async (container) => {
+          try {
+            const response = await metricsApi.getContainerMetrics(container.id, start, end);
+            newMetricsData.set(container.id, {
+              name: getServiceName(container),
+              metrics: response.metrics,
+            });
+          } catch (err) {
+            console.error(`Failed to load metrics for ${container.id}:`, err);
+          }
+        })
+      );
+
+      setMetricsData(newMetricsData);
+    } catch (err) {
+      console.error('Failed to load metrics:', err);
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [containers, metricsTimeRange]);
+
+  // Auto-refresh metrics when on metrics tab
+  useEffect(() => {
+    if (activeTab === 'metrics') {
+      loadMetrics();
+      const interval = setInterval(loadMetrics, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, loadMetrics]);
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -394,6 +451,12 @@ export default function StackDetailPage() {
           onClick={() => setActiveTab('logs')}
         >
           Logs
+        </button>
+        <button
+          className={`tab ${activeTab === 'metrics' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('metrics')}
+        >
+          Metrics
         </button>
       </div>
 
@@ -858,6 +921,248 @@ export default function StackDetailPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Metrics Tab */}
+      {activeTab === 'metrics' && (
+        <div className="space-y-6">
+          {/* Time Range Selector */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-text-secondary" />
+              <span className="text-sm text-text-secondary">Time Range:</span>
+              <div className="flex bg-bg-secondary rounded-lg p-1">
+                {[
+                  { label: '5m', value: 5 * 60 * 1000 },
+                  { label: '15m', value: 15 * 60 * 1000 },
+                  { label: '30m', value: 30 * 60 * 1000 },
+                  { label: '1h', value: 60 * 60 * 1000 },
+                  { label: '6h', value: 6 * 60 * 60 * 1000 },
+                ].map((range) => (
+                  <button
+                    key={range.label}
+                    onClick={() => setMetricsTimeRange(range)}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                      metricsTimeRange.label === range.label
+                        ? 'bg-accent-blue text-white'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              className="btn btn-sm"
+              onClick={loadMetrics}
+              disabled={metricsLoading}
+            >
+              <RefreshCw size={14} className={metricsLoading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
+
+          {metricsLoading && metricsData.size === 0 ? (
+            <div className="loading">
+              <div className="spinner" />
+              Loading metrics...
+            </div>
+          ) : metricsData.size === 0 ? (
+            <div className="card">
+              <div className="card-body text-center py-8">
+                <BarChart3 size={48} className="mx-auto mb-4 text-text-secondary" style={{ opacity: 0.5 }} />
+                <div className="text-text-secondary">No metrics data available</div>
+                <p className="text-sm text-text-secondary mt-2">
+                  Metrics are collected for running containers only
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* CPU Chart */}
+              <div className="card">
+                <div className="card-body">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Cpu size={18} className="text-accent-blue" />
+                    CPU Usage
+                  </h3>
+                  <div style={{ height: '250px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis
+                          dataKey="time"
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickLine={false}
+                          allowDuplicatedCategory={false}
+                        />
+                        <YAxis
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickLine={false}
+                          tickFormatter={(value) => `${value}%`}
+                          domain={[0, 'auto']}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1f2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: number) => `${value.toFixed(1)}%`}
+                        />
+                        <Legend />
+                        {Array.from(metricsData.entries()).map(([, { name, metrics }], idx) => (
+                          <Line
+                            key={name}
+                            data={metrics.map((m) => ({
+                              time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                              [name]: m.cpuPercent,
+                            }))}
+                            type="monotone"
+                            dataKey={name}
+                            name={name}
+                            stroke={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]}
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Memory Chart */}
+              <div className="card">
+                <div className="card-body">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <MemoryStick size={18} className="text-accent-green" />
+                    Memory Usage
+                  </h3>
+                  <div style={{ height: '250px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis
+                          dataKey="time"
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickLine={false}
+                          allowDuplicatedCategory={false}
+                        />
+                        <YAxis
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickLine={false}
+                          tickFormatter={(value) => `${value}%`}
+                          domain={[0, 100]}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1f2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: number) => `${value.toFixed(1)}%`}
+                        />
+                        <Legend />
+                        {Array.from(metricsData.entries()).map(([, { name, metrics }], idx) => (
+                          <Area
+                            key={name}
+                            data={metrics.map((m) => ({
+                              time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                              [name]: m.memoryPercent,
+                            }))}
+                            type="monotone"
+                            dataKey={name}
+                            name={name}
+                            stroke={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]}
+                            fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]}
+                            fillOpacity={0.2}
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Network I/O Chart */}
+              <div className="card">
+                <div className="card-body">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Network size={18} className="text-accent-purple" />
+                    Network I/O
+                  </h3>
+                  <div style={{ height: '250px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis
+                          dataKey="time"
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickLine={false}
+                          allowDuplicatedCategory={false}
+                        />
+                        <YAxis
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickLine={false}
+                          tickFormatter={formatBytes}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1f2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: number) => formatBytes(value)}
+                        />
+                        <Legend />
+                        {Array.from(metricsData.entries()).map(([, { name, metrics }], idx) => (
+                          <>
+                            <Line
+                              key={`${name}_rx`}
+                              data={metrics.map((m) => ({
+                                time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                                [`${name} RX`]: m.networkRxBytes,
+                              }))}
+                              type="monotone"
+                              dataKey={`${name} RX`}
+                              name={`${name} RX`}
+                              stroke={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]}
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                            <Line
+                              key={`${name}_tx`}
+                              data={metrics.map((m) => ({
+                                time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                                [`${name} TX`]: m.networkTxBytes,
+                              }))}
+                              type="monotone"
+                              dataKey={`${name} TX`}
+                              name={`${name} TX`}
+                              stroke={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][idx % 6]}
+                              strokeDasharray="5 5"
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                          </>
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

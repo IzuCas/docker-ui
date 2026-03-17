@@ -17,6 +17,7 @@ type Router struct {
 	systemHandler    *handler.SystemHandler
 	registryHandler  *handler.RegistryHandler
 	wsHandler        *handler.WebSocketHandler
+	metricsHandler   *handler.MetricsHandler
 }
 
 func NewRouter(
@@ -27,6 +28,7 @@ func NewRouter(
 	systemHandler *handler.SystemHandler,
 	registryHandler *handler.RegistryHandler,
 	wsHandler *handler.WebSocketHandler,
+	metricsHandler *handler.MetricsHandler,
 ) *Router {
 	return &Router{
 		containerHandler: containerHandler,
@@ -36,6 +38,7 @@ func NewRouter(
 		systemHandler:    systemHandler,
 		registryHandler:  registryHandler,
 		wsHandler:        wsHandler,
+		metricsHandler:   metricsHandler,
 	}
 }
 
@@ -46,6 +49,7 @@ func (r *Router) RegisterRoutes(api huma.API) {
 	r.registerNetworkRoutes(api)
 	r.registerSystemRoutes(api)
 	r.registerRegistryRoutes(api)
+	r.registerMetricsRoutes(api)
 }
 
 // RegisterWebSocketRoutes registers WebSocket routes directly on chi router
@@ -480,4 +484,69 @@ func (r *Router) registerRegistryRoutes(api huma.API) {
 		Description: "Returns all settings including registries and proxy",
 		Tags:        []string{"Settings"},
 	}, r.registryHandler.GetSettings)
+}
+
+func (r *Router) registerMetricsRoutes(api huma.API) {
+	huma.Register(api, huma.Operation{
+		OperationID: "get-container-metrics",
+		Method:      "GET",
+		Path:        "/metrics/containers/{container_id}",
+		Summary:     "Get container metrics",
+		Description: "Returns metrics for a specific container over time",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.GetContainerMetrics)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-all-container-metrics",
+		Method:      "GET",
+		Path:        "/metrics/containers",
+		Summary:     "Get all container metrics",
+		Description: "Returns metrics for all containers over time",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.GetAllContainerMetrics)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-latest-metrics",
+		Method:      "GET",
+		Path:        "/metrics/latest",
+		Summary:     "Get latest metrics",
+		Description: "Returns the most recent metrics for all containers and system",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.GetLatestMetrics)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-system-metrics",
+		Method:      "GET",
+		Path:        "/metrics/system",
+		Summary:     "Get system metrics",
+		Description: "Returns system-level Docker metrics over time",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.GetSystemMetrics)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "query-logs",
+		Method:      "GET",
+		Path:        "/metrics/logs",
+		Summary:     "Query logs",
+		Description: "Queries log entries with filters",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.QueryLogs)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "aggregate-logs",
+		Method:      "GET",
+		Path:        "/metrics/logs/aggregate",
+		Summary:     "Aggregate logs",
+		Description: "Aggregates logs by time buckets for charting",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.AggregateLogs)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-metrics-stats",
+		Method:      "GET",
+		Path:        "/metrics/stats",
+		Summary:     "Get metrics store stats",
+		Description: "Returns statistics about the metrics store",
+		Tags:        []string{"Metrics"},
+	}, r.metricsHandler.GetStats)
 }

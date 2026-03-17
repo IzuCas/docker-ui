@@ -371,3 +371,66 @@ export interface PruneReport {
   networksDeleted: string[];
   spaceReclaimed: number;
 }
+
+// Metrics types
+export interface ContainerMetricPoint {
+  timestamp: string;
+  cpuPercent: number;
+  memoryUsage: number;
+  memoryLimit: number;
+  memoryPercent: number;
+  networkRxBytes: number;
+  networkTxBytes: number;
+  blockRead: number;
+  blockWrite: number;
+  pids: number;
+}
+
+export interface ContainerMetricsResponse {
+  containerId: string;
+  containerName: string;
+  startTime: string;
+  endTime: string;
+  resolution: string;
+  dataPoints: number;
+  metrics: ContainerMetricPoint[];
+}
+
+export interface AllContainerMetricsResponse {
+  startTime: string;
+  endTime: string;
+  containers: Record<string, ContainerMetricsResponse>;
+}
+
+export interface LatestMetricsResponse {
+  timestamp: string;
+  containers: Record<string, ContainerMetricPoint>;
+  system: SystemMetricPoint;
+}
+
+export interface SystemMetricPoint {
+  timestamp: string;
+  cpuCores: number;
+  memoryTotal: number;
+  containersRunning: number;
+  containersPaused: number;
+  containersStopped: number;
+  imagesCount: number;
+  volumesCount: number;
+  networksCount: number;
+}
+
+export interface SystemMetricsResponse {
+  startTime: string;
+  endTime: string;
+  dataPoints: number;
+  metrics: SystemMetricPoint[];
+}
+
+export interface MetricsStoreStats {
+  containers_tracked: number;
+  container_metric_points: number;
+  system_metric_points: number;
+  log_entries: number;
+  retention_period: string;
+}

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -12,6 +15,7 @@ import (
 
 	"app/example/internal/application/service"
 	"app/example/internal/infrastructure/docker"
+	"app/example/internal/infrastructure/metrics"
 	httpRouter "app/example/internal/interfaces/http"
 	"app/example/internal/interfaces/http/handler"
 	"app/example/pkg/logger"
@@ -57,6 +61,18 @@ func main() {
 	systemService := service.NewSystemService(systemClient)
 	registryService := service.NewRegistryService(registryClient)
 
+	// Initialize metrics store and collector (3-day retention)
+	metricsStore := metrics.NewStore()
+	metricsCollector := metrics.NewCollector(dockerClient, metricsStore)
+	metricsService := service.NewMetricsService(metricsStore, metricsCollector)
+
+	// Start metrics collector
+	ctx, cancel := context.WithCancel(context.Background())
+	metricsService.Start(ctx)
+	logger.Info("Metrics collector started",
+		logger.String("retention", "72h"),
+		logger.String("interval", "5s"))
+
 	// Initialize handlers
 	containerHandler := handler.NewContainerHandler(containerService)
 	imageHandler := handler.NewImageHandler(imageService)
@@ -65,6 +81,7 @@ func main() {
 	systemHandler := handler.NewSystemHandler(systemService)
 	registryHandler := handler.NewRegistryHandler(registryService)
 	wsHandler := handler.NewWebSocketHandler(containerService, systemService)
+	metricsHandler := handler.NewMetricsHandler(metricsService)
 
 	// Initialize router
 	router := httpRouter.NewRouter(
@@ -75,6 +92,7 @@ func main() {
 		systemHandler,
 		registryHandler,
 		wsHandler,
+		metricsHandler,
 	)
 
 	// Create Chi router
@@ -114,6 +132,24 @@ func main() {
 		logger.String("logs", "ws://localhost:8001/ws/containers/logs?id=<id>"),
 		logger.String("system", "ws://localhost:8001/ws/system"),
 	)
+	logger.Info("Metrics endpoints available",
+		logger.String("latest", "http://localhost:8001/metrics/latest"),
+		logger.String("containers", "http://localhost:8001/metrics/containers"),
+		logger.String("system", "http://localhost:8001/metrics/system"),
+		logger.String("logs", "http://localhost:8001/metrics/logs"),
+	)
+
+	// Handle graceful shutdown
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		logger.Info("Shutting down...")
+		cancel()
+		metricsService.Stop()
+		logger.Info("Metrics collector stopped")
+	}()
 
 	logger.Info("Starting HTTP server on :8001")
 	if err := http.ListenAndServe(":8001", r); err != nil {

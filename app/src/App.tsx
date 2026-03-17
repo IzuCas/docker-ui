@@ -7,6 +7,7 @@ import {
   Activity,
   Cog,
   FolderOpen,
+  BarChart3,
 } from 'lucide-react';
 import ContainersPage from './pages/Containers';
 import ContainerDetailPage from './pages/ContainerDetail';
@@ -18,6 +19,7 @@ import StacksPage from './pages/Stacks';
 import StackDetailPage from './pages/StackDetail';
 import SystemPage from './pages/System';
 import SettingsPage from './pages/Settings';
+import MetricsPage from './pages/Metrics';
 
 function App() {
   return (
@@ -109,6 +111,19 @@ function App() {
             System
           </div>
           <NavLink 
+            to="/metrics" 
+            className={({ isActive }) => 
+              `flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive 
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-2 border-accent-blue' 
+                  : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+              }`
+            }
+          >
+            <BarChart3 size={18} />
+            Metrics
+          </NavLink>
+          <NavLink 
             to="/system" 
             className={({ isActive }) => 
               `flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -155,6 +170,7 @@ function App() {
           <Route path="/images/:id" element={<ImageDetailPage />} />
           <Route path="/volumes" element={<VolumesPage />} />
           <Route path="/networks" element={<NetworksPage />} />
+          <Route path="/metrics" element={<MetricsPage />} />
           <Route path="/system" element={<SystemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
