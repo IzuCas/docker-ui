@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 
-	"app/example/internal/application/service"
-	"app/example/internal/domain/entity"
-	"app/example/internal/interfaces/http/dto"
-	"app/example/pkg/logger"
+	"github.com/IzuCas/docker-ui/internal/application/service"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/interfaces/http/dto"
+	"github.com/IzuCas/docker-ui/pkg/logger"
 )
 
 type RegistryHandler struct {

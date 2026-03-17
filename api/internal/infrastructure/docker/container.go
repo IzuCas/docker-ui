@@ -16,7 +16,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 
-	"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 type ContainerClient struct {

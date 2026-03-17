@@ -5,8 +5,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"app/example/pkg/auth"
-	"app/example/pkg/logger"
+	"github.com/IzuCas/docker-ui/pkg/auth"
+	"github.com/IzuCas/docker-ui/pkg/logger"
 )
 
 // AuthHandler handles authentication requests

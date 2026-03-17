@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"app/example/pkg/logger"
+	"github.com/IzuCas/docker-ui/pkg/logger"
 )
 
 // responseWriter wraps http.ResponseWriter to capture status code

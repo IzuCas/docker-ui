@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 
-	"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 type ImageClient struct {

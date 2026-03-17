@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 
-	"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 type NetworkClient struct {

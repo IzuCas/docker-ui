@@ -6,7 +6,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"app/example/internal/interfaces/http/handler"
+	"github.com/IzuCas/docker-ui/internal/interfaces/http/handler"
 )
 
 type Router struct {

@@ -36,11 +36,11 @@ type ImagePullOptions struct {
 
 // ImageBuildOptions represents options for building an image
 type ImageBuildOptions struct {
-	Tags       []string
-	Dockerfile string
-	BuildArgs  map[string]string
-	NoCache    bool
-	Remove     bool
+	Tags        []string
+	Dockerfile  string
+	BuildArgs   map[string]string
+	NoCache     bool
+	Remove      bool
 	ForceRemove bool
 }
 

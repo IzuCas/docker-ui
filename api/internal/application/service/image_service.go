@@ -6,8 +6,8 @@ import (
 
 	"github.com/docker/docker/api/types/registry"
 
-	"app/example/internal/domain/client"
-	"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/client"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 type ImageService struct {

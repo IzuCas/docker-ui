@@ -14,13 +14,13 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"app/example/internal/application/service"
-	"app/example/internal/infrastructure/docker"
-	"app/example/internal/infrastructure/metrics"
-	httpRouter "app/example/internal/interfaces/http"
-	"app/example/internal/interfaces/http/handler"
-	"app/example/pkg/logger"
-	"app/example/pkg/middleware"
+	"github.com/IzuCas/docker-ui/internal/application/service"
+	"github.com/IzuCas/docker-ui/internal/infrastructure/docker"
+	"github.com/IzuCas/docker-ui/internal/infrastructure/metrics"
+	httpRouter "github.com/IzuCas/docker-ui/internal/interfaces/http"
+	"github.com/IzuCas/docker-ui/internal/interfaces/http/handler"
+	"github.com/IzuCas/docker-ui/pkg/logger"
+	"github.com/IzuCas/docker-ui/pkg/middleware"
 )
 
 func main() {

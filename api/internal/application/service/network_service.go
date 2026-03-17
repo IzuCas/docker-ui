@@ -1,10 +1,10 @@
 package service
 
 import (
-"context"
+	"context"
 
-"app/example/internal/domain/client"
-"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/client"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 type NetworkService struct {

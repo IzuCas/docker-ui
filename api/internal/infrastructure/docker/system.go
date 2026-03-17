@@ -1,12 +1,12 @@
 package docker
 
 import (
-"context"
+	"context"
 
-"github.com/docker/docker/api/types"
-"github.com/docker/docker/client"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 
-"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 type SystemClient struct {
@@ -99,12 +99,12 @@ func (c *SystemClient) DiskUsage(ctx context.Context) (*entity.DiskUsage, error)
 	if usage.Volumes != nil {
 		for _, vol := range usage.Volumes {
 			volumes = append(volumes, entity.VolumeDiskUsage{
-Name:       vol.Name,
-Driver:     vol.Driver,
-Mountpoint: vol.Mountpoint,
-Size:       vol.UsageData.Size,
-RefCount:   vol.UsageData.RefCount,
-})
+				Name:       vol.Name,
+				Driver:     vol.Driver,
+				Mountpoint: vol.Mountpoint,
+				Size:       vol.UsageData.Size,
+				RefCount:   vol.UsageData.RefCount,
+			})
 		}
 	}
 

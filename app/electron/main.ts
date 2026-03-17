@@ -142,13 +142,15 @@ function createWindow(): void {
     return { action: 'deny' };
   });
 
-  // Register F12 to toggle DevTools (works in both dev and prod)
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.key === 'F12') {
-      mainWindow?.webContents.toggleDevTools();
-      event.preventDefault();
-    }
-  });
+  // Register F12 to toggle DevTools (dev only)
+  if (isDev) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12') {
+        mainWindow?.webContents.toggleDevTools();
+        event.preventDefault();
+      }
+    });
+  }
 
   // Create menu with DevTools option
   const menu = Menu.buildFromTemplate([
@@ -164,12 +166,12 @@ function createWindow(): void {
         { role: 'reload' },
         { role: 'forceReload' },
         { type: 'separator' },
-        {
+        ...(isDev ? [{
           label: 'Toggle Developer Tools',
           accelerator: 'F12',
           click: () => mainWindow?.webContents.toggleDevTools(),
-        },
-        { type: 'separator' },
+        } as Electron.MenuItemConstructorOptions] : []),
+        { type: 'separator' } as Electron.MenuItemConstructorOptions,
         { role: 'resetZoom' },
         { role: 'zoomIn' },
         { role: 'zoomOut' },

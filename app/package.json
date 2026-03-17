@@ -1,7 +1,7 @@
 {
   "name": "docker-management-ui",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Docker container management application with modern UI",
   "author": {
     "name": "IzuCas",

@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"app/example/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
 )
 
 const (

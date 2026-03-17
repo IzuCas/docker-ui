@@ -1,4 +1,4 @@
-module app/example
+module github.com/IzuCas/docker-ui
 
 go 1.25.0
 

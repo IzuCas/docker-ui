@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"app/example/internal/domain/entity"
-	"app/example/internal/infrastructure/metrics"
+	"github.com/IzuCas/docker-ui/internal/domain/entity"
+	"github.com/IzuCas/docker-ui/internal/infrastructure/metrics"
 )
 
 // MetricsService handles metrics operations

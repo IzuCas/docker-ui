@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"app/example/pkg/auth"
+	"github.com/IzuCas/docker-ui/pkg/auth"
 )
 
 // JWTAuth validates the Authorization: Bearer <token> header.
