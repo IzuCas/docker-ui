@@ -8,6 +8,8 @@ import {
   Cog,
   FolderOpen,
   BarChart3,
+  LogOut,
+  User,
 } from 'lucide-react';
 import ContainersPage from './pages/Containers';
 import ContainerDetailPage from './pages/ContainerDetail';
@@ -20,8 +22,17 @@ import StackDetailPage from './pages/StackDetail';
 import SystemPage from './pages/System';
 import SettingsPage from './pages/Settings';
 import MetricsPage from './pages/Metrics';
+import LoginPage from './pages/Login';
+import ChangePasswordPage from './pages/ChangePassword';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-function App() {
+function ProtectedApp() {
+  const { isAuthenticated, username, logout } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="flex min-h-screen bg-bg-primary">
       <aside className="w-64 bg-bg-secondary border-r border-border flex flex-col fixed h-screen">
@@ -152,10 +163,20 @@ function App() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
-          <div className="text-xs text-text-secondary text-center">
-            Docker Management v1.0
+        <div className="p-4 border-t border-border space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <div className="w-7 h-7 rounded-full bg-accent-blue/20 flex items-center justify-center shrink-0">
+              <User size={14} className="text-accent-blue" />
+            </div>
+            <span className="text-sm text-text-primary font-medium truncate">{username}</span>
           </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary hover:text-red-400 transition-all duration-200"
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
         </div>
       </aside>
 
@@ -173,9 +194,21 @@ function App() {
           <Route path="/metrics" element={<MetricsPage />} />
           <Route path="/system" element={<SystemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
         </Routes>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/*" element={<ProtectedApp />} />
+      </Routes>
+    </AuthProvider>
   );
 }
 

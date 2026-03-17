@@ -18,6 +18,7 @@ type Router struct {
 	registryHandler  *handler.RegistryHandler
 	wsHandler        *handler.WebSocketHandler
 	metricsHandler   *handler.MetricsHandler
+	authHandler      *handler.AuthHandler
 }
 
 func NewRouter(
@@ -29,6 +30,7 @@ func NewRouter(
 	registryHandler *handler.RegistryHandler,
 	wsHandler *handler.WebSocketHandler,
 	metricsHandler *handler.MetricsHandler,
+	authHandler *handler.AuthHandler,
 ) *Router {
 	return &Router{
 		containerHandler: containerHandler,
@@ -39,7 +41,12 @@ func NewRouter(
 		registryHandler:  registryHandler,
 		wsHandler:        wsHandler,
 		metricsHandler:   metricsHandler,
+		authHandler:      authHandler,
 	}
+}
+
+func (r *Router) RegisterPublicRoutes(api huma.API) {
+	r.registerAuthRoutes(api)
 }
 
 func (r *Router) RegisterRoutes(api huma.API) {
@@ -50,6 +57,31 @@ func (r *Router) RegisterRoutes(api huma.API) {
 	r.registerSystemRoutes(api)
 	r.registerRegistryRoutes(api)
 	r.registerMetricsRoutes(api)
+	r.registerProtectedAuthRoutes(api)
+}
+
+func (r *Router) registerAuthRoutes(api huma.API) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "login",
+		Method:        "POST",
+		Path:          "/auth/login",
+		Summary:       "Login",
+		Description:   "Authenticate and receive a JWT token",
+		Tags:          []string{"Auth"},
+		DefaultStatus: http.StatusOK,
+	}, r.authHandler.Login)
+}
+
+func (r *Router) registerProtectedAuthRoutes(api huma.API) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "change-password",
+		Method:        "POST",
+		Path:          "/auth/change-password",
+		Summary:       "Change password",
+		Description:   "Update the current user's password",
+		Tags:          []string{"Auth"},
+		DefaultStatus: http.StatusOK,
+	}, r.authHandler.ChangePassword)
 }
 
 // RegisterWebSocketRoutes registers WebSocket routes directly on chi router

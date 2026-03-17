@@ -48,6 +48,11 @@ export function getApiBaseUrl(): string {
   return 'http://localhost:8001';
 }
 
+function getAuthHeader(): Record<string, string> {
+  const token = localStorage.getItem('auth_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -60,11 +65,19 @@ async function request<T>(
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeader(),
         ...options.headers,
       },
     });
 
     console.log(`[API] Response: ${response.status} ${response.statusText}`);
+
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_username');
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -84,6 +97,32 @@ async function request<T>(
     throw error;
   }
 }
+
+// Auth API (no token required)
+export const authApi = {
+  login: (username: string, password: string) =>
+    fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Login failed' }));
+        throw new Error(err.detail || err.message || 'Invalid username or password');
+      }
+      return res.json() as Promise<{ token: string; username: string; require_password_change: boolean }>;
+    }),
+
+  changePassword: (currentPassword: string, newPassword: string, newUsername?: string) =>
+    request<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        ...(newUsername ? { new_username: newUsername } : {}),
+      }),
+    }),
+};
 
 // Container API
 export const containerApi = {

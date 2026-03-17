@@ -82,6 +82,7 @@ func main() {
 	registryHandler := handler.NewRegistryHandler(registryService)
 	wsHandler := handler.NewWebSocketHandler(containerService, systemService)
 	metricsHandler := handler.NewMetricsHandler(metricsService)
+	authHandler := handler.NewAuthHandler()
 
 	// Initialize router
 	router := httpRouter.NewRouter(
@@ -93,6 +94,7 @@ func main() {
 		registryHandler,
 		wsHandler,
 		metricsHandler,
+		authHandler,
 	)
 
 	// Create Chi router
@@ -117,8 +119,15 @@ func main() {
 	// Create Huma API with OpenAPI documentation
 	api := humachi.New(r, huma.DefaultConfig("Docker Management API", "1.0.0"))
 
-	// Register routes
-	router.RegisterRoutes(api)
+	// Register public auth routes (no JWT required)
+	router.RegisterPublicRoutes(api)
+
+	// Protected routes require JWT
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWTAuth)
+		protectedAPI := humachi.New(r, huma.DefaultConfig("Docker Management API", "1.0.0"))
+		router.RegisterRoutes(protectedAPI)
+	})
 
 	// Start server
 	logger.Info("Server configuration",
