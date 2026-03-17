@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -112,15 +113,22 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+	// Global rate limit: 300 requests/min per IP across all endpoints
+	r.Use(middleware.RateLimit(300))
 
 	// Register WebSocket routes (before Huma API to avoid conflicts)
 	router.RegisterWebSocketRoutes(r)
 
 	// Create Huma API with OpenAPI documentation
 	api := humachi.New(r, huma.DefaultConfig("Docker Management API", "1.0.0"))
+	_ = api // docs registered at /docs
 
-	// Register public auth routes (no JWT required)
-	router.RegisterPublicRoutes(api)
+	// Public auth routes: max 3 failed login attempts, then block for 1 minute
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.LoginRateLimit(3, time.Minute))
+		publicAPI := humachi.New(r, huma.DefaultConfig("Docker Management API", "1.0.0"))
+		router.RegisterPublicRoutes(publicAPI)
+	})
 
 	// Protected routes require JWT
 	r.Group(func(r chi.Router) {

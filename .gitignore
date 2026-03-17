@@ -40,6 +40,9 @@ Thumbs.db
 # Docker manager config
 .docker-manager/
 
+# Credentials (contains sensitive login data)
+**/data/credentials.json
+
 # ==================================
 # React Frontend (app/)
 # ==================================
