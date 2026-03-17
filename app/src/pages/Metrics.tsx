@@ -117,17 +117,17 @@ export default function MetricsPage() {
       if (allContainers.containers) {
         for (const [containerId, containerMetrics] of Object.entries(allContainers.containers)) {
           chartData.push({
-            name: containerMetrics.containerName || containerId.substring(0, 12),
+            name: containerMetrics.container_name || containerId.substring(0, 12),
             data: containerMetrics.metrics.map((m: ContainerMetricPoint) => ({
               time: formatTime(m.timestamp),
               timestamp: new Date(m.timestamp).getTime(),
-              cpu: m.cpuPercent,
-              memory: m.memoryUsage,
-              memoryPercent: m.memoryPercent,
-              networkRx: m.networkRxBytes,
-              networkTx: m.networkTxBytes,
-              blockRead: m.blockRead,
-              blockWrite: m.blockWrite,
+              cpu: m.cpu_percent,
+              memory: m.memory_usage,
+              memoryPercent: m.memory_percent,
+              networkRx: m.network_rx_bytes,
+              networkTx: m.network_tx_bytes,
+              blockRead: m.block_read,
+              blockWrite: m.block_write,
             })),
           });
         }
@@ -534,7 +534,7 @@ export default function MetricsPage() {
                 <Legend />
                 <Area
                   type="monotone"
-                  dataKey="containersRunning"
+                  dataKey="containers_running"
                   name="Running"
                   stroke="#10b981"
                   fill="#10b981"
@@ -543,7 +543,7 @@ export default function MetricsPage() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="containersPaused"
+                  dataKey="containers_paused"
                   name="Paused"
                   stroke="#f59e0b"
                   fill="#f59e0b"
@@ -552,7 +552,7 @@ export default function MetricsPage() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="containersStopped"
+                  dataKey="containers_stopped"
                   name="Stopped"
                   stroke="#ef4444"
                   fill="#ef4444"
@@ -597,28 +597,28 @@ export default function MetricsPage() {
                       {containerId.substring(0, 12)}
                     </td>
                     <td className="py-3">
-                      <span className="text-accent-blue">{formatPercent(metrics.cpuPercent)}</span>
+                      <span className="text-accent-blue">{formatPercent(metrics.cpu_percent)}</span>
                     </td>
                     <td className="py-3 text-text-primary">
-                      {formatBytes(metrics.memoryUsage)} / {formatBytes(metrics.memoryLimit)}
+                      {formatBytes(metrics.memory_usage)} / {formatBytes(metrics.memory_limit)}
                     </td>
                     <td className="py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-bg-tertiary rounded-full overflow-hidden">
                           <div
                             className="h-full bg-accent-green rounded-full"
-                            style={{ width: `${Math.min(metrics.memoryPercent, 100)}%` }}
+                            style={{ width: `${Math.min(metrics.memory_percent, 100)}%` }}
                           />
                         </div>
                         <span className="text-text-secondary">
-                          {formatPercent(metrics.memoryPercent)}
+                          {formatPercent(metrics.memory_percent)}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 text-text-primary">{formatBytes(metrics.networkRxBytes)}</td>
-                    <td className="py-3 text-text-primary">{formatBytes(metrics.networkTxBytes)}</td>
-                    <td className="py-3 text-text-primary">{formatBytes(metrics.blockRead)}</td>
-                    <td className="py-3 text-text-primary">{formatBytes(metrics.blockWrite)}</td>
+                    <td className="py-3 text-text-primary">{formatBytes(metrics.network_rx_bytes)}</td>
+                    <td className="py-3 text-text-primary">{formatBytes(metrics.network_tx_bytes)}</td>
+                    <td className="py-3 text-text-primary">{formatBytes(metrics.block_read)}</td>
+                    <td className="py-3 text-text-primary">{formatBytes(metrics.block_write)}</td>
                     <td className="py-3 text-text-primary">{metrics.pids}</td>
                   </tr>
                 ))}

@@ -1020,7 +1020,7 @@ export default function StackDetailPage() {
                             key={name}
                             data={metrics.map((m) => ({
                               time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                              [name]: m.cpuPercent,
+                              [name]: m.cpu_percent,
                             }))}
                             type="monotone"
                             dataKey={name}
@@ -1075,7 +1075,7 @@ export default function StackDetailPage() {
                             key={name}
                             data={metrics.map((m) => ({
                               time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                              [name]: m.memoryPercent,
+                              [name]: m.memory_percent,
                             }))}
                             type="monotone"
                             dataKey={name}
@@ -1131,7 +1131,7 @@ export default function StackDetailPage() {
                               key={`${name}_rx`}
                               data={metrics.map((m) => ({
                                 time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                                [`${name} RX`]: m.networkRxBytes,
+                                [`${name} RX`]: m.network_rx_bytes,
                               }))}
                               type="monotone"
                               dataKey={`${name} RX`}
@@ -1144,7 +1144,7 @@ export default function StackDetailPage() {
                               key={`${name}_tx`}
                               data={metrics.map((m) => ({
                                 time: new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                                [`${name} TX`]: m.networkTxBytes,
+                                [`${name} TX`]: m.network_tx_bytes,
                               }))}
                               type="monotone"
                               dataKey={`${name} TX`}

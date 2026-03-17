@@ -375,30 +375,30 @@ export interface PruneReport {
 // Metrics types
 export interface ContainerMetricPoint {
   timestamp: string;
-  cpuPercent: number;
-  memoryUsage: number;
-  memoryLimit: number;
-  memoryPercent: number;
-  networkRxBytes: number;
-  networkTxBytes: number;
-  blockRead: number;
-  blockWrite: number;
+  cpu_percent: number;
+  memory_usage: number;
+  memory_limit: number;
+  memory_percent: number;
+  network_rx_bytes: number;
+  network_tx_bytes: number;
+  block_read: number;
+  block_write: number;
   pids: number;
 }
 
 export interface ContainerMetricsResponse {
-  containerId: string;
-  containerName: string;
-  startTime: string;
-  endTime: string;
+  container_id: string;
+  container_name: string;
+  start_time: string;
+  end_time: string;
   resolution: string;
-  dataPoints: number;
+  data_points: number;
   metrics: ContainerMetricPoint[];
 }
 
 export interface AllContainerMetricsResponse {
-  startTime: string;
-  endTime: string;
+  start_time: string;
+  end_time: string;
   containers: Record<string, ContainerMetricsResponse>;
 }
 
@@ -410,20 +410,20 @@ export interface LatestMetricsResponse {
 
 export interface SystemMetricPoint {
   timestamp: string;
-  cpuCores: number;
-  memoryTotal: number;
-  containersRunning: number;
-  containersPaused: number;
-  containersStopped: number;
-  imagesCount: number;
-  volumesCount: number;
-  networksCount: number;
+  cpu_cores: number;
+  memory_total: number;
+  containers_running: number;
+  containers_paused: number;
+  containers_stopped: number;
+  images_count: number;
+  volumes_count: number;
+  networks_count: number;
 }
 
 export interface SystemMetricsResponse {
-  startTime: string;
-  endTime: string;
-  dataPoints: number;
+  start_time: string;
+  end_time: string;
+  data_points: number;
   metrics: SystemMetricPoint[];
 }
 
