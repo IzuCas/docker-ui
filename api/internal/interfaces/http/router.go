@@ -82,6 +82,16 @@ func (r *Router) registerProtectedAuthRoutes(api huma.API) {
 		Tags:          []string{"Auth"},
 		DefaultStatus: http.StatusOK,
 	}, r.authHandler.ChangePassword)
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "verify-credentials",
+		Method:        "POST",
+		Path:          "/auth/verify",
+		Summary:       "Verify credentials",
+		Description:   "Validate username and password (used before sensitive operations)",
+		Tags:          []string{"Auth"},
+		DefaultStatus: http.StatusOK,
+	}, r.authHandler.Verify)
 }
 
 // RegisterWebSocketRoutes registers WebSocket routes directly on chi router

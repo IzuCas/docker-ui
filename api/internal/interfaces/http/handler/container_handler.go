@@ -3,9 +3,12 @@ package handler
 import (
 	"context"
 
+	"github.com/danielgtaylor/huma/v2"
+
 	"app/example/internal/application/service"
 	"app/example/internal/domain/entity"
 	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/auth"
 	"app/example/pkg/logger"
 )
 
@@ -364,6 +367,14 @@ func (h *ContainerHandler) Stats(ctx context.Context, input *dto.ContainerStatsI
 func (h *ContainerHandler) Exec(ctx context.Context, input *dto.ContainerExecInput) (*dto.ContainerExecOutput, error) {
 	logger.Info("Executing command in container", logger.String("container_id", input.ID), logger.Any("cmd", input.Body.Cmd))
 
+	// Privileged execution requires credential confirmation
+	if input.Body.Privileged {
+		creds := auth.LoadCredentials()
+		if !creds.Verify(input.Body.ConfirmPassword) {
+			return nil, huma.Error401Unauthorized("Password confirmation required for privileged execution")
+		}
+	}
+
 	config := entity.ExecConfig{
 		Cmd:          input.Body.Cmd,
 		AttachStdout: true,
@@ -417,6 +428,12 @@ func (h *ContainerHandler) Top(ctx context.Context, input *dto.ContainerTopInput
 
 func (h *ContainerHandler) UpdateEnv(ctx context.Context, input *dto.ContainerUpdateEnvInput) (*dto.ContainerUpdateEnvOutput, error) {
 	logger.Info("Updating container environment", logger.String("container_id", input.ID), logger.Int("env_count", len(input.Body.Env)))
+
+	// Require credential confirmation to modify environment variables
+	creds := auth.LoadCredentials()
+	if !creds.Verify(input.Body.ConfirmPassword) {
+		return nil, huma.Error401Unauthorized("Password confirmation required to update environment variables")
+	}
 
 	newID, err := h.service.UpdateEnv(ctx, input.ID, input.Body.Env)
 	if err != nil {

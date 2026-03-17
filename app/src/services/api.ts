@@ -122,6 +122,12 @@ export const authApi = {
         ...(newUsername ? { new_username: newUsername } : {}),
       }),
     }),
+
+  verify: (username: string, password: string) =>
+    request<{ valid: boolean }>('/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
 };
 
 // Container API
@@ -184,10 +190,10 @@ export const containerApi = {
     return request<{ titles: string[]; processes: string[][] }>(`/containers/${id}/top${params}`);
   },
 
-  updateEnv: (id: string, env: string[]) =>
+  updateEnv: (id: string, env: string[], confirmPassword: string) =>
     request<{ id: string; message: string }>(`/containers/${id}/env`, {
       method: 'PUT',
-      body: JSON.stringify({ env }),
+      body: JSON.stringify({ env, confirmPassword }),
     }),
 
   prune: () =>

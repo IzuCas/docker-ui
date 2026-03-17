@@ -23,7 +23,7 @@ func JWTAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		_, err := auth.ValidateToken(parts[1])
+		claims, err := auth.ValidateToken(parts[1])
 		if err != nil {
 			if err == auth.ErrExpiredToken {
 				http.Error(w, `{"title":"Forbidden","status":403,"detail":"Token has expired"}`, http.StatusForbidden)
@@ -31,6 +31,15 @@ func JWTAuth(next http.Handler) http.Handler {
 			}
 			http.Error(w, `{"title":"Unauthorized","status":401,"detail":"Invalid token"}`, http.StatusUnauthorized)
 			return
+		}
+
+		// Reject tokens issued before the last password change
+		creds := auth.LoadCredentials()
+		if !creds.TokensValidAfter.IsZero() && claims.IssuedAt != nil {
+			if claims.IssuedAt.Time.Before(creds.TokensValidAfter) {
+				http.Error(w, `{"title":"Unauthorized","status":401,"detail":"Token has been invalidated"}`, http.StatusUnauthorized)
+				return
+			}
 		}
 
 		next.ServeHTTP(w, r)

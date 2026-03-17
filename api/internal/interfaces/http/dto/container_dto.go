@@ -214,12 +214,13 @@ type ContainerExecInput struct {
 }
 
 type ExecRequest struct {
-	Cmd        []string `json:"cmd" required:"true"`
-	Env        []string `json:"env,omitempty" required:"false"`
-	WorkingDir string   `json:"workingDir,omitempty" required:"false"`
-	User       string   `json:"user,omitempty" required:"false"`
-	Privileged bool     `json:"privileged,omitempty" required:"false"`
-	Tty        bool     `json:"tty,omitempty" required:"false"`
+	Cmd             []string `json:"cmd" required:"true"`
+	Env             []string `json:"env,omitempty" required:"false"`
+	WorkingDir      string   `json:"workingDir,omitempty" required:"false"`
+	User            string   `json:"user,omitempty" required:"false"`
+	Privileged      bool     `json:"privileged,omitempty" required:"false"`
+	Tty             bool     `json:"tty,omitempty" required:"false"`
+	ConfirmPassword string   `json:"confirmPassword,omitempty" doc:"Current password — required when privileged is true"`
 }
 
 type ContainerExecOutput struct {
@@ -238,7 +239,8 @@ type ContainerUpdateEnvInput struct {
 }
 
 type ContainerUpdateEnvRequest struct {
-	Env []string `json:"env" required:"true" doc:"Environment variables in KEY=VALUE format"`
+	Env             []string `json:"env" required:"true" doc:"Environment variables in KEY=VALUE format"`
+	ConfirmPassword string   `json:"confirmPassword" required:"true" doc:"Current password to confirm identity"`
 }
 
 type ContainerUpdateEnvResponse struct {

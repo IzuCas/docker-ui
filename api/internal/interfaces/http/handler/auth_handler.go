@@ -39,7 +39,7 @@ type LoginOutput struct {
 func (h *AuthHandler) Login(ctx context.Context, input *LoginInput) (*LoginOutput, error) {
 	creds := auth.LoadCredentials()
 
-	if input.Body.Username != creds.Username || input.Body.Password != creds.Password {
+	if input.Body.Username != creds.Username || !creds.Verify(input.Body.Password) {
 		logger.Warn("Failed login attempt", logger.String("username", input.Body.Username))
 		return nil, huma.Error401Unauthorized("Invalid username or password")
 	}
@@ -82,7 +82,7 @@ type ChangePasswordOutput struct {
 func (h *AuthHandler) ChangePassword(ctx context.Context, input *ChangePasswordInput) (*ChangePasswordOutput, error) {
 	creds := auth.LoadCredentials()
 
-	if input.Body.CurrentPassword != creds.Password {
+	if !creds.Verify(input.Body.CurrentPassword) {
 		return nil, huma.Error401Unauthorized("Current password is incorrect")
 	}
 
@@ -129,6 +129,33 @@ func (h *AuthHandler) Me(ctx context.Context, input *MeInput) (*MeOutput, error)
 	}
 	out := &MeOutput{}
 	out.Body.Username = claims.Username
+	return out, nil
+}
+
+// VerifyInput is the request body for POST /auth/verify
+type VerifyInput struct {
+	Body struct {
+		Username string `json:"username" required:"true" minLength:"1"`
+		Password string `json:"password" required:"true" minLength:"1"`
+	}
+}
+
+// VerifyOutput is the response for a successful credential verification
+type VerifyOutput struct {
+	Body struct {
+		Valid bool `json:"valid"`
+	}
+}
+
+// Verify validates credentials and returns whether they are correct.
+// Requires a valid JWT (protected route). Used by the UI before sensitive operations.
+func (h *AuthHandler) Verify(ctx context.Context, input *VerifyInput) (*VerifyOutput, error) {
+	creds := auth.LoadCredentials()
+	if input.Body.Username != creds.Username || !creds.Verify(input.Body.Password) {
+		return nil, huma.Error401Unauthorized("Invalid credentials")
+	}
+	out := &VerifyOutput{}
+	out.Body.Valid = true
 	return out, nil
 }
 

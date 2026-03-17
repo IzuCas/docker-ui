@@ -16,10 +16,14 @@ import {
   X,
   Trash,
   Search,
+  Eye,
+  EyeOff,
+  Lock,
 } from 'lucide-react';
 import { containerApi } from '../services/api';
 import { useContainerStats, useContainerLogs } from '../hooks/useWebSocket';
 import type { Container, ContainerStats } from '../types';
+import CredentialConfirmModal from '../components/CredentialConfirmModal';
 
 interface EnvVariable {
   key: string;
@@ -44,8 +48,18 @@ export default function ContainerDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [execCommand, setExecCommand] = useState('');
   const [execLoading, setExecLoading] = useState(false);
+  const [execPrivileged, setExecPrivileged] = useState(false);
   const [useRealtimeStats, setUseRealtimeStats] = useState(true);
   const [useRealtimeLogs, setUseRealtimeLogs] = useState(true);
+  
+  // Credential confirmation modal state
+  const [credModal, setCredModal] = useState<{
+    purpose: string;
+    onConfirm: (username: string, password: string) => void;
+  } | null>(null);
+
+  // Sensitive env var reveal state (by index)
+  const [revealedEnvVars, setRevealedEnvVars] = useState<Set<number>>(new Set());
   
   // Terminal state
   const [terminalHistory, setTerminalHistory] = useState<TerminalEntry[]>([]);
@@ -203,7 +217,24 @@ export default function ContainerDetailPage() {
       setCommandHistory(prev => [...prev, cmd]);
     }
     setHistoryIndex(-1);
-    
+
+    // Privileged exec requires credential confirmation first
+    if (execPrivileged) {
+      setCredModal({
+        purpose: `Enter your credentials to run this command with elevated privileges: ${cmd}`,
+        onConfirm: async (_username, password) => {
+          setCredModal(null);
+          await runExecCommand(cmd, true, password);
+        },
+      });
+      return;
+    }
+
+    await runExecCommand(cmd, false, '');
+  };
+
+  const runExecCommand = async (cmd: string, privileged: boolean, confirmPassword: string) => {
+    if (!id) return;
     try {
       setExecLoading(true);
       
@@ -218,6 +249,8 @@ export default function ContainerDetailPage() {
         const result = await containerApi.exec(id, {
           cmd: ['sh', '-c', cdCommand],
           tty: true,
+          privileged,
+          confirmPassword,
         });
         
         const newDir = cleanOutput(result.output).trim();
@@ -251,6 +284,8 @@ export default function ContainerDetailPage() {
         const result = await containerApi.exec(id, {
           cmd: ['sh', '-c', fullCommand],
           tty: true,
+          privileged,
+          confirmPassword,
         });
         
         // Add to terminal history
@@ -319,6 +354,29 @@ export default function ContainerDetailPage() {
     setCurrentDir('/');
   };
 
+  // Returns true if the env var key likely holds a sensitive value
+  const isSensitiveKey = (key: string): boolean =>
+    /password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|auth[_-]?key|credential|private[_-]?key/i.test(key);
+
+  // Toggles reveal for a sensitive env var after credential confirmation
+  const revealEnvVar = (index: number) => {
+    setCredModal({
+      purpose: 'Enter your credentials to reveal this sensitive value.',
+      onConfirm: () => {
+        setRevealedEnvVars((prev) => new Set(prev).add(index));
+        setCredModal(null);
+      },
+    });
+  };
+
+  const hideEnvVar = (index: number) => {
+    setRevealedEnvVars((prev) => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
   // Clean terminal output (remove control characters)
   const cleanOutput = (output: string) => {
     // Remove Docker multiplexed stream headers and control characters
@@ -377,17 +435,23 @@ export default function ContainerDetailPage() {
     const validEnv = editedEnv.filter((e) => e.key.trim() !== '');
     const envStrings = validEnv.map((e) => `${e.key}=${e.value}`);
     
-    try {
-      setEnvSaving(true);
-      const result = await containerApi.updateEnv(id, envStrings);
-      // Navigate to the new container ID
-      navigate(`/containers/${result.id}`, { replace: true });
-      setIsEditingEnv(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update environment variables');
-    } finally {
-      setEnvSaving(false);
-    }
+    // Require credential confirmation before modifying environment variables
+    setCredModal({
+      purpose: 'Enter your credentials to save environment variable changes. The container will be recreated.',
+      onConfirm: async (_username, password) => {
+        setCredModal(null);
+        try {
+          setEnvSaving(true);
+          const result = await containerApi.updateEnv(id, envStrings, password);
+          navigate(`/containers/${result.id}`, { replace: true });
+          setIsEditingEnv(false);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to update environment variables');
+        } finally {
+          setEnvSaving(false);
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -417,6 +481,15 @@ export default function ContainerDetailPage() {
 
   return (
     <div>
+      {/* Credential confirmation modal */}
+      {credModal && (
+        <CredentialConfirmModal
+          purpose={credModal.purpose}
+          onConfirm={credModal.onConfirm}
+          onCancel={() => setCredModal(null)}
+        />
+      )}
+
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <Link to="/containers" className="btn-icon">
@@ -688,14 +761,25 @@ export default function ContainerDetailPage() {
                       {container.name.replace(/^\//, '')}
                     </span>
                   </div>
-                  <button 
-                    className="btn btn-sm" 
-                    onClick={clearTerminal}
-                    title="Clear terminal"
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                  >
-                    Clear
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', cursor: 'pointer', color: execPrivileged ? 'var(--accent-red)' : 'var(--text-secondary)' }}>
+                      <input
+                        type="checkbox"
+                        checked={execPrivileged}
+                        onChange={(e) => setExecPrivileged(e.target.checked)}
+                      />
+                      <Lock size={12} />
+                      Privileged
+                    </label>
+                    <button 
+                      className="btn btn-sm" 
+                      onClick={clearTerminal}
+                      title="Clear terminal"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Terminal output area */}
@@ -896,10 +980,28 @@ export default function ContainerDetailPage() {
                   {container.env.map((envVar, i) => {
                     const [key, ...valueParts] = envVar.split('=');
                     const value = valueParts.join('=');
+                    const sensitive = isSensitiveKey(key);
+                    const revealed = revealedEnvVars.has(i);
                     return (
                       <tr key={i}>
                         <td className="code">{key}</td>
-                        <td className="code truncate">{value}</td>
+                        <td className="code truncate">
+                          {sensitive ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ letterSpacing: revealed ? 'normal' : '0.15em' }}>
+                                {revealed ? value : '••••••••'}
+                              </span>
+                              <button
+                                className="btn-icon"
+                                title={revealed ? 'Hide value' : 'Reveal value (requires credentials)'}
+                                onClick={() => revealed ? hideEnvVar(i) : revealEnvVar(i)}
+                                style={{ padding: '2px', color: 'var(--text-secondary)' }}
+                              >
+                                {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                              </button>
+                            </span>
+                          ) : value}
+                        </td>
                       </tr>
                     );
                   })}

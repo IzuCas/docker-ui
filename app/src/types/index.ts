@@ -125,6 +125,7 @@ export interface ExecConfig {
   user?: string;
   privileged?: boolean;
   tty?: boolean;
+  confirmPassword?: string;
 }
 
 export interface ExecResult {

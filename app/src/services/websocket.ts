@@ -84,8 +84,13 @@ export class WebSocketService {
       return;
     }
 
-    console.log('[WebSocket] Connecting to:', this.url);
-    this.ws = new WebSocket(this.url);
+    // Append JWT token as query parameter for WebSocket authentication
+    const token = localStorage.getItem('auth_token');
+    const separator = this.url.includes('?') ? '&' : '?';
+    const url = token ? `${this.url}${separator}token=${encodeURIComponent(token)}` : this.url;
+
+    console.log('[WebSocket] Connecting to:', url);
+    this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       console.log('[WebSocket] Connected');

@@ -12,6 +12,7 @@ import (
 
 	"app/example/internal/application/service"
 	"app/example/internal/interfaces/http/dto"
+	"app/example/pkg/auth"
 )
 
 var upgrader = websocket.Upgrader{
@@ -27,6 +28,26 @@ type WebSocketHandler struct {
 	systemService    *service.SystemService
 	clients          map[*websocket.Conn]bool
 	mu               sync.RWMutex
+}
+
+// validateWSToken verifies the JWT passed as the "token" query parameter.
+// It checks both signature/expiry and the TokensValidAfter invalidation field.
+func validateWSToken(r *http.Request) bool {
+	tokenStr := r.URL.Query().Get("token")
+	if tokenStr == "" {
+		return false
+	}
+	claims, err := auth.ValidateToken(tokenStr)
+	if err != nil {
+		return false
+	}
+	creds := auth.LoadCredentials()
+	if !creds.TokensValidAfter.IsZero() && claims.IssuedAt != nil {
+		if claims.IssuedAt.Time.Before(creds.TokensValidAfter) {
+			return false
+		}
+	}
+	return true
 }
 
 func NewWebSocketHandler(containerService *service.ContainerService, systemService *service.SystemService) *WebSocketHandler {
@@ -45,6 +66,10 @@ type WSMessage struct {
 
 // ContainerEvents handles Docker events stream
 func (h *WebSocketHandler) ContainerEvents(w http.ResponseWriter, r *http.Request) {
+	if !validateWSToken(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
@@ -106,6 +131,10 @@ func (h *WebSocketHandler) ContainerEvents(w http.ResponseWriter, r *http.Reques
 
 // ContainerStats handles container stats streaming
 func (h *WebSocketHandler) ContainerStats(w http.ResponseWriter, r *http.Request) {
+	if !validateWSToken(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	containerID := r.URL.Query().Get("id")
 	if containerID == "" {
 		http.Error(w, "Container ID required", http.StatusBadRequest)
@@ -168,6 +197,10 @@ func (h *WebSocketHandler) ContainerStats(w http.ResponseWriter, r *http.Request
 
 // ContainerLogs handles container logs streaming
 func (h *WebSocketHandler) ContainerLogs(w http.ResponseWriter, r *http.Request) {
+	if !validateWSToken(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	containerID := r.URL.Query().Get("id")
 	if containerID == "" {
 		http.Error(w, "Container ID required", http.StatusBadRequest)
@@ -230,6 +263,10 @@ func (h *WebSocketHandler) ContainerLogs(w http.ResponseWriter, r *http.Request)
 
 // ContainersList handles real-time container list updates
 func (h *WebSocketHandler) ContainersList(w http.ResponseWriter, r *http.Request) {
+	if !validateWSToken(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
@@ -347,6 +384,10 @@ func (h *WebSocketHandler) sendContainerList(conn *websocket.Conn, all bool) {
 
 // SystemInfo handles system info streaming
 func (h *WebSocketHandler) SystemInfo(w http.ResponseWriter, r *http.Request) {
+	if !validateWSToken(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
