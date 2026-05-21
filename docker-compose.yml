@@ -28,7 +28,7 @@ services:
     depends_on:
       - api
     ports:
-      - "9870:9870"
+      - "9870:80"
     networks:
       - docker-manager-network
 
