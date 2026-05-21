@@ -26,7 +26,7 @@ services:
     container_name: docker-manager-app
     restart: unless-stopped
     ports:
-      - "9870:80"
+      - "9870:9870"
     networks:
       - docker-manager-network
 
