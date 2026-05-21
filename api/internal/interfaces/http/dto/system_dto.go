@@ -55,10 +55,10 @@ type SystemDiskUsageOutput struct {
 }
 
 type DiskUsageResponse struct {
-	LayersSize int64                      `json:"layersSize"`
-	Images     []ImageDiskUsageResponse   `json:"images"`
+	LayersSize int64                        `json:"layersSize"`
+	Images     []ImageDiskUsageResponse     `json:"images"`
 	Containers []ContainerDiskUsageResponse `json:"containers"`
-	Volumes    []VolumeDiskUsageResponse  `json:"volumes"`
+	Volumes    []VolumeDiskUsageResponse    `json:"volumes"`
 }
 
 type ImageDiskUsageResponse struct {
@@ -92,6 +92,15 @@ type VolumeDiskUsageResponse struct {
 type SystemPingInput struct{}
 
 type SystemPingOutput struct {
+	Body struct {
+		Status string `json:"status"`
+	}
+}
+
+// Health check (simple, no Docker dependency)
+type HealthInput struct{}
+
+type HealthOutput struct {
 	Body struct {
 		Status string `json:"status"`
 	}

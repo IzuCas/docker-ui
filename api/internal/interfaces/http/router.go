@@ -47,6 +47,27 @@ func NewRouter(
 
 func (r *Router) RegisterPublicRoutes(api huma.API) {
 	r.registerAuthRoutes(api)
+	r.registerHealthRoutes(api)
+}
+
+func (r *Router) registerHealthRoutes(api huma.API) {
+	huma.Register(api, huma.Operation{
+		OperationID: "health",
+		Method:      "GET",
+		Path:        "/health",
+		Summary:     "Health check",
+		Description: "Simple health check endpoint",
+		Tags:        []string{"System"},
+	}, r.systemHandler.Health)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "system-ping",
+		Method:      "GET",
+		Path:        "/system/ping",
+		Summary:     "Ping Docker",
+		Description: "Pings the Docker daemon to check connectivity",
+		Tags:        []string{"System"},
+	}, r.systemHandler.Ping)
 }
 
 func (r *Router) RegisterRoutes(api huma.API) {
@@ -470,15 +491,6 @@ func (r *Router) registerSystemRoutes(api huma.API) {
 		Description: "Returns Docker disk usage information",
 		Tags:        []string{"System"},
 	}, r.systemHandler.DiskUsage)
-
-	huma.Register(api, huma.Operation{
-		OperationID: "system-ping",
-		Method:      "GET",
-		Path:        "/system/ping",
-		Summary:     "Ping Docker",
-		Description: "Pings the Docker daemon to check connectivity",
-		Tags:        []string{"System"},
-	}, r.systemHandler.Ping)
 }
 
 func (r *Router) registerRegistryRoutes(api huma.API) {

@@ -150,3 +150,12 @@ func (h *SystemHandler) Ping(ctx context.Context, input *dto.SystemPingInput) (*
 		}{Status: "OK"},
 	}, nil
 }
+
+// Health is a simple health check that doesn't depend on Docker
+func (h *SystemHandler) Health(ctx context.Context, input *dto.HealthInput) (*dto.HealthOutput, error) {
+	return &dto.HealthOutput{
+		Body: struct {
+			Status string `json:"status"`
+		}{Status: "OK"},
+	}, nil
+}
