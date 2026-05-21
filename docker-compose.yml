@@ -25,6 +25,8 @@ services:
       dockerfile: Dockerfile
     container_name: docker-manager-app
     restart: unless-stopped
+    depends_on:
+      - api
     ports:
       - "9870:9870"
     networks:
