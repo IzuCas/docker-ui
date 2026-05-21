@@ -27,7 +27,7 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://localhost:9871';
+const BASE_URL = 'http://localhost:3001';
 
 export default function () {
   // Test 1: List containers

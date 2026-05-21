@@ -47,8 +47,8 @@ build-app:
 # Run both API and frontend (development mode without Docker)
 dev:
 	@echo "Starting API and Frontend in development mode..."
-	@echo "API will be available at http://localhost:9871"
-	@echo "Frontend will be available at http://localhost:9870"
+	@echo "API will be available at http://localhost:3001"
+	@echo "Frontend will be available at http://localhost:3000"
 	@trap 'kill 0' SIGINT; \
 	(cd api && go run ./cmd/api) & \
 	(cd app && npm run dev) & \

@@ -147,25 +147,25 @@ A API estará disponível em `http://localhost:8001`
 ### Listar containers
 
 ```bash
-curl http://localhost:9871/containers?all=true
+curl http://localhost:3001/containers?all=true
 ```
 
 ### Criar e iniciar um container
 
 ```bash
 # Criar
-curl -X POST http://localhost:9871/containers \
+curl -X POST http://localhost:3001/containers \
   -H "Content-Type: application/json" \
   -d '{"name": "meu-nginx", "image": "nginx:latest"}'
 
 # Iniciar
-curl -X POST http://localhost:9871/containers/meu-nginx/start
+curl -X POST http://localhost:3001/containers/meu-nginx/start
 ```
 
 ### Baixar uma imagem
 
 ```bash
-curl -X POST http://localhost:9871/images/pull \
+curl -X POST http://localhost:3001/images/pull \
   -H "Content-Type: application/json" \
   -d '{"image": "alpine", "tag": "latest"}'
 ```
@@ -173,7 +173,7 @@ curl -X POST http://localhost:9871/images/pull \
 ### Executar comando em container
 
 ```bash
-curl -X POST http://localhost:9871/containers/meu-nginx/exec \
+curl -X POST http://localhost:3001/containers/meu-nginx/exec \
   -H "Content-Type: application/json" \
   -d '{"cmd": ["ls", "-la", "/"]}'
 ```
