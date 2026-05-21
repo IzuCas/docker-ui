@@ -63,8 +63,8 @@ run_dev() {
     check_node
     
     echo -e "${GREEN}Starting development environment...${NC}"
-    echo -e "${YELLOW}API: http://localhost:8001${NC}"
-    echo -e "${YELLOW}Frontend: http://localhost:3000${NC}"
+    echo -e "${YELLOW}API: http://localhost:9871${NC}"
+    echo -e "${YELLOW}Frontend: http://localhost:9870${NC}"
     echo ""
     
     # Start API in background

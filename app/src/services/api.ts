@@ -45,7 +45,7 @@ export function getApiBaseUrl(): string {
   }
   // In web mode, use the actual API server URL
   // The SSE endpoint is registered at /images/pull/stream (without /api prefix)
-  return 'http://localhost:8001';
+  return 'http://localhost:9871';
 }
 
 function getAuthHeader(): Record<string, string> {

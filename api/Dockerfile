@@ -29,6 +29,6 @@ RUN apk --no-cache add ca-certificates wget
 # Copy binary from builder
 COPY --from=builder /app/api .
 
-EXPOSE 8001
+EXPOSE 9871
 
 CMD ["./api"]

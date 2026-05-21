@@ -10,7 +10,7 @@ function getWsUrl(): string {
   }
   
   // In web mode (Vite dev server), connect directly to API server
-  // The API runs on port 8001
+  // The API runs on port 9871
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   
   // Check if we have a configured API URL
@@ -19,8 +19,8 @@ function getWsUrl(): string {
     return `${protocol}//${apiUrl.host}`;
   }
   
-  // Default: API is on localhost:8001
-  return `${protocol}//localhost:8001`;
+  // Default: API is on localhost:9871
+  return `${protocol}//localhost:9871`;
 }
 
 const WS_URL = getWsUrl();

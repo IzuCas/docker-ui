@@ -139,21 +139,21 @@ func main() {
 
 	// Start server
 	logger.Info("Server configuration",
-		logger.String("address", ":8001"),
-		logger.String("docs", "http://localhost:8001/docs"),
+		logger.String("address", ":9871"),
+		logger.String("docs", "http://localhost:9871/docs"),
 	)
 	logger.Info("WebSocket endpoints available",
-		logger.String("events", "ws://localhost:8001/ws/events"),
-		logger.String("containers", "ws://localhost:8001/ws/containers"),
-		logger.String("stats", "ws://localhost:8001/ws/containers/stats?id=<id>"),
-		logger.String("logs", "ws://localhost:8001/ws/containers/logs?id=<id>"),
-		logger.String("system", "ws://localhost:8001/ws/system"),
+		logger.String("events", "ws://localhost:9871/ws/events"),
+		logger.String("containers", "ws://localhost:9871/ws/containers"),
+		logger.String("stats", "ws://localhost:9871/ws/containers/stats?id=<id>"),
+		logger.String("logs", "ws://localhost:9871/ws/containers/logs?id=<id>"),
+		logger.String("system", "ws://localhost:9871/ws/system"),
 	)
 	logger.Info("Metrics endpoints available",
-		logger.String("latest", "http://localhost:8001/metrics/latest"),
-		logger.String("containers", "http://localhost:8001/metrics/containers"),
-		logger.String("system", "http://localhost:8001/metrics/system"),
-		logger.String("logs", "http://localhost:8001/metrics/logs"),
+		logger.String("latest", "http://localhost:9871/metrics/latest"),
+		logger.String("containers", "http://localhost:9871/metrics/containers"),
+		logger.String("system", "http://localhost:9871/metrics/system"),
+		logger.String("logs", "http://localhost:9871/metrics/logs"),
 	)
 
 	// Handle graceful shutdown
@@ -168,8 +168,8 @@ func main() {
 		logger.Info("Metrics collector stopped")
 	}()
 
-	logger.Info("Starting HTTP server on :8001")
-	if err := http.ListenAndServe(":8001", r); err != nil {
+	logger.Info("Starting HTTP server on :9871")
+	if err := http.ListenAndServe(":9871", r); err != nil {
 		logger.Fatal("Failed to start server", logger.Err(err))
 	}
 }

@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // API configuration
   getApiUrl: () => {
-    const port = process.env.API_PORT || '8001';
+    const port = process.env.API_PORT || '9871';
     return `http://localhost:${port}`;
   },
 });

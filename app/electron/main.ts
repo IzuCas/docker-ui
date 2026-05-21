@@ -13,7 +13,7 @@ let apiProcess: ChildProcess | null = null;
 
 // Use app.isPackaged to detect production vs development
 const isDev = !app.isPackaged;
-const API_PORT = process.env.API_PORT || '8001';
+const API_PORT = process.env.API_PORT || '9871';
 
 // Check if API is already running
 function checkApiRunning(): Promise<boolean> {
@@ -181,7 +181,7 @@ function createWindow(): void {
   Menu.setApplicationMenu(menu);
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadURL('http://localhost:9870');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));

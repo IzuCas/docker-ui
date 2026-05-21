@@ -18,8 +18,8 @@ Uma aplicação completa para gerenciamento de Docker com interface web moderna 
 # Iniciar todos os serviços
 docker compose up -d
 
-# Frontend: http://localhost:3000
-# API: http://localhost:8001
+# Frontend: http://localhost:9870
+# API: http://localhost:9871
 ```
 
 ### 2. Desenvolvimento Local (Sem Docker)
@@ -126,7 +126,7 @@ convert icon.png -resize 256x256 icon.ico
 
 O app Electron verifica automaticamente:
 
-1. Se já existe uma API rodando na porta 8001 (ex: via Docker) → usa ela
+1. Se já existe uma API rodando na porta 9871 (ex: via Docker) → usa ela
 2. Se não → inicia o binário embutido em `/opt/Docker Manager/resources/api/api`
 
 Isso permite usar o app tanto com Docker quanto standalone.
@@ -192,7 +192,7 @@ make clean          # Limpar artefatos de build
 ### Variáveis de Ambiente
 
 #### API
-- `PORT`: Porta da API (padrão: 8001)
+- `PORT`: Porta da API (padrão: 9871)
 - `DOCKER_HOST`: Socket do Docker (padrão: unix:///var/run/docker.sock)
 
 #### Frontend

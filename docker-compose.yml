@@ -8,7 +8,7 @@ services:
     container_name: docker-manager-api
     restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "9871:9871"
     volumes:
       # Mount Docker socket to allow container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -26,7 +26,7 @@ services:
     container_name: docker-manager-app
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "9870:80"
     networks:
       - docker-manager-network
 
